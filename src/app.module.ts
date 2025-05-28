@@ -1,8 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
-import { ConfigModule } from '@nestjs/config';
-// TEMPORALMENTE COMENTADO - THROTTLING DESHABILITADO
-// import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { UserModule } from './user/user.module';
 import { RegionModule } from './region/region.module';
 import { CulturalDataModule } from './cultural-data/cultural-data.module';
@@ -31,7 +30,7 @@ import { SystemPromptModule } from './system-prompt/system-prompt.module';
 import { RawExecutionModule } from './raw-execution/raw-execution.module';
 import { TenantModule } from './tenant/tenant.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 
 @Module({
@@ -41,54 +40,47 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
       isGlobal: true,
       ttl: 60 * 5,
     }),
-    // TEMPORALMENTE DESHABILITADO PARA DESARROLLO - THROTTLING CAUSANDO PROBLEMAS
-    // TODO: Rehabilitar con configuración correcta
-    /*
-    // Configuración de Rate Limiting con múltiples límites
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const isDevelopment = configService.get('NODE_ENV') === 'development';
         const throttleEnabled = configService.get('THROTTLE_ENABLED') !== 'false';
-        
-        // Si está deshabilitado o es desarrollo y no se fuerza, usar límites muy altos
+
         if (!throttleEnabled || (isDevelopment && !configService.get('THROTTLE_FORCE_IN_DEV'))) {
           return [
             {
               name: 'default',
-              ttl: 60000, // 1 minuto
-              limit: 10000, // Límite muy alto para desarrollo
+              ttl: 60000,
+              limit: 10000,
             },
           ];
         }
-        
-        // Configuración normal para producción
+
         return [
           {
             name: 'default',
-            ttl: parseInt(configService.get('THROTTLE_TTL') || '60') * 1000, // 60 segundos por defecto
-            limit: parseInt(configService.get('THROTTLE_LIMIT') || '500'), // 500 requests por defecto - muy permisivo
+            ttl: parseInt(configService.get('THROTTLE_TTL') || '60') * 1000,
+            limit: parseInt(configService.get('THROTTLE_LIMIT') || '500'),
           },
           {
             name: 'auth',
-            ttl: parseInt(configService.get('THROTTLE_AUTH_TTL') || '900') * 1000, // 15 minutos
-            limit: parseInt(configService.get('THROTTLE_AUTH_LIMIT') || '20'), // 20 intentos de login - permisivo
+            ttl: parseInt(configService.get('THROTTLE_AUTH_TTL') || '900') * 1000,
+            limit: parseInt(configService.get('THROTTLE_AUTH_LIMIT') || '20'),
           },
           {
             name: 'api',
-            ttl: parseInt(configService.get('THROTTLE_API_TTL') || '60') * 1000, // 1 minuto
-            limit: parseInt(configService.get('THROTTLE_API_LIMIT') || '300'), // 300 requests API - muy permisivo
+            ttl: parseInt(configService.get('THROTTLE_API_TTL') || '60') * 1000,
+            limit: parseInt(configService.get('THROTTLE_API_LIMIT') || '300'),
           },
           {
             name: 'creation',
-            ttl: parseInt(configService.get('THROTTLE_CREATION_TTL') || '60') * 1000, // 1 minuto
-            limit: parseInt(configService.get('THROTTLE_CREATION_LIMIT') || '100'), // 100 creaciones - permisivo
+            ttl: parseInt(configService.get('THROTTLE_CREATION_TTL') || '60') * 1000,
+            limit: parseInt(configService.get('THROTTLE_CREATION_LIMIT') || '100'),
           },
         ];
       },
     }),
-    */
     LoggingModule,
     PrismaModule,
     UserModule,
@@ -118,19 +110,14 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
   controllers: [AppController],
   providers: [
     AppService,
-    // Global Audit Interceptor
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor,
     },
-    // TEMPORALMENTE DESHABILITADO - THROTTLING CAUSANDO PROBLEMAS EN DESARROLLO
-    /*
-    // Aplicar ThrottlerGuard globalmente
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
-    */
   ],
 })
 export class AppModule implements NestModule {

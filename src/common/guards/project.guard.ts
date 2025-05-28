@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service'; // Corrected path assuming standard structure
 import { Reflector } from '@nestjs/core'; // Import Reflector
-import { AuthenticatedUser } from '../types/request.types'; // <<< AÑADIDO
+import { AuthenticatedUser } from '../types/request.types';
 // import { validate as isUuid } from 'uuid'; // O usa class-validator si prefieres
 // Asumiendo CUIDs para IDs de proyecto
 
@@ -19,7 +19,7 @@ export const PROJECT_ID_PARAM_KEY = 'projectIdParam'; // Key for metadata
 
 @Injectable()
 export class ProjectGuard implements CanActivate {
-  private readonly logger = new Logger(ProjectGuard.name); // Restaurado
+  private readonly logger = new Logger(ProjectGuard.name);
 
   constructor(
     private prisma: PrismaService,
@@ -38,10 +38,6 @@ export class ProjectGuard implements CanActivate {
 
     const projectId = request.params[projectIdParamName]; // Use dynamic param name
     const user = request.user as AuthenticatedUser; // Cast to your user type
-
-    this.logger.debug(
-      `[ProjectGuard] Attempting to access projectId: "${projectId}", User: ${JSON.stringify(user)}`
-    );
 
     if (!user || !user.tenantId) {
       this.logger.warn(
@@ -67,7 +63,6 @@ export class ProjectGuard implements CanActivate {
       );
       throw new BadRequestException('Invalid Project ID format');
     }
-    //this.logger.debug(`Project ID format validated: ${projectId}`);
 
     // 3. Fetch project and check ownership
     try {

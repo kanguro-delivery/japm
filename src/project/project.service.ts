@@ -95,9 +95,10 @@ export class ProjectService {
   }
 
   async findAll(tenantId: string): Promise<ProjectDto[]> {
-    console.log(`[Service] Finding projects for tenant: ${tenantId}`); // Log de depuración
+    this.logger.debug(`[findAll] Finding projects for tenant: ${tenantId}`);
     const projects = await this.prisma.project.findMany({
-      where: { tenantId: tenantId }, // Filtrar directamente en la query por tenantId
+      where: { tenantId },
+      include: { owner: true, environments: true },
     });
     return projects.map(this.transformProject);
   }

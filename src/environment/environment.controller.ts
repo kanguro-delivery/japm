@@ -49,7 +49,7 @@ export class EnvironmentController {
   constructor(
     private readonly service: EnvironmentService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) {}
+  ) { }
 
   // Helper function to get the cache key for the findAll endpoint
   private getFindAllCacheKey(projectId: string): string {
@@ -86,7 +86,6 @@ export class EnvironmentController {
     // Invalidate cache
     const cacheKey = this.getFindAllCacheKey(projectId);
     await this.cacheManager.del(cacheKey);
-    console.log(`Cache invalidated for key: ${cacheKey}`);
     return newEnvironment;
   }
 
@@ -102,7 +101,6 @@ export class EnvironmentController {
   @ApiResponse({ status: 404, description: 'Project not found.' })
   findAll(@Req() req: RequestWithProject): Promise<Environment[]> {
     const projectId = req.projectId;
-    // console.log(`Cache MISS: EnvironmentController.findAll(${projectId}) executed`);
     return this.service.findAll(projectId);
   }
 
@@ -203,7 +201,6 @@ export class EnvironmentController {
     // Invalidate cache
     const cacheKey = this.getFindAllCacheKey(projectId);
     await this.cacheManager.del(cacheKey);
-    console.log(`Cache invalidated for key: ${cacheKey}`);
     // Optionally invalidate findOne cache: `/api/projects/${projectId}/environments/${environmentId}`
     // Optionally invalidate findByName cache: `/api/projects/${projectId}/environments/by-name/${updatedEnvironment.name}` (and potentially old name)
     return updatedEnvironment;
@@ -240,7 +237,6 @@ export class EnvironmentController {
     // Invalidate cache
     const cacheKey = this.getFindAllCacheKey(projectId);
     await this.cacheManager.del(cacheKey);
-    console.log(`Cache invalidated for key: ${cacheKey}`);
     // Optionally invalidate findOne/findByName caches
     return removedEnvironment;
   }

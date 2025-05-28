@@ -144,12 +144,12 @@ describe('Prompt Versioning E2E Tests', () => {
       await prisma.user.deleteMany();
       await prisma.asset.deleteMany();
       await prisma.tenant.deleteMany();
-      console.log('Limpieza de datos específicos completada en afterAll');
+      // console.log('Limpieza de datos específicos completada en afterAll');
     } catch (err) {
       console.error('Error durante la limpieza en afterAll:', err);
     }
     await app.close();
-    console.log('App cerrada en afterAll');
+    // console.log('App cerrada en afterAll');
   });
 
   describe('Prompt Versioning', () => {
@@ -179,12 +179,12 @@ describe('Prompt Versioning E2E Tests', () => {
         });
 
       expect(basePromptResponse.status).toBe(201);
-      console.log(
-        'Respuesta al crear base prompt:',
-        basePromptResponse.status,
-        basePromptResponse.body,
-        basePromptResponse.text,
-      );
+      // console.log(
+      //   'Respuesta al crear base prompt:',
+      //   basePromptResponse.status,
+      //   basePromptResponse.body,
+      //   basePromptResponse.text,
+      // );
 
       // Verificar que se creó automáticamente la versión 1.0.0
       expect(basePromptResponse.body.versions).toHaveLength(1);
@@ -205,13 +205,13 @@ describe('Prompt Versioning E2E Tests', () => {
         });
 
       expect(versionResponse.status).toBe(201);
-      console.log('Versión del prompt creada:', versionResponse.body);
+      // console.log('Versión del prompt creada:', versionResponse.body);
 
       // 4. Verificar que la versión existe
       const versionExists = await prisma.promptVersion.findUnique({
         where: { id: versionResponse.body.id },
       });
-      console.log('Versión existe:', versionExists);
+      // console.log('Versión existe:', versionExists);
 
       // 5. Crear otra nueva versión
       const newVersionResponse = await supertest(app.getHttpServer())

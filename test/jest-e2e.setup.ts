@@ -5,35 +5,35 @@ import path from 'path';
 // Usar el mismo path que en .env.test
 const dbPath = path.resolve(__dirname, '../prisma/japm.test.db');
 
-console.log(`🧪 Configurando base de datos de test: ${dbPath}`);
+// console.log(`🧪 Configurando base de datos de test: ${dbPath}`);
 
 // Función para aplicar migraciones de manera robusta
 function applyMigrations() {
   try {
-    console.log('🔄 Aplicando migraciones de Prisma...');
+    // console.log('🔄 Aplicando migraciones de Prisma...');
     execSync('npx prisma migrate deploy --schema=prisma/schema.prisma', {
       stdio: 'inherit',
       env: process.env,
     });
-    console.log('✅ Migraciones aplicadas exitosamente');
+    // console.log('✅ Migraciones aplicadas exitosamente');
   } catch (error) {
     console.error('❌ Error aplicando migraciones:', error);
 
     // Si hay conflicto de migraciones, eliminar la base de datos y volver a intentar
-    console.log('🗑️ Eliminando base de datos corrupta y reintentando...');
+    // console.log('🗑️ Eliminando base de datos corrupta y reintentando...');
     if (fs.existsSync(dbPath)) {
       fs.unlinkSync(dbPath);
     }
 
     try {
-      console.log('🔄 Reintentando migraciones...');
+      // console.log('🔄 Reintentando migraciones...');
       execSync('npx prisma migrate deploy --schema=prisma/schema.prisma', {
         stdio: 'inherit',
         env: process.env,
       });
-      console.log(
-        '✅ Migraciones aplicadas exitosamente en el segundo intento',
-      );
+      // console.log(
+      //   '✅ Migraciones aplicadas exitosamente en el segundo intento',
+      // );
     } catch (retryError) {
       console.error(
         '❌ Error crítico: No se pudieron aplicar las migraciones después del reintentu:',
@@ -46,7 +46,7 @@ function applyMigrations() {
 
 // Eliminar la base de datos antes de cada suite para garantizar estado limpio
 if (fs.existsSync(dbPath)) {
-  console.log('🗑️ Eliminando base de datos de test existente...');
+  // console.log('🗑️ Eliminando base de datos de test existente...');
   fs.unlinkSync(dbPath);
 }
 
@@ -125,7 +125,7 @@ async function fullCleanDatabase() {
 }
 
 beforeAll(async () => {
-  console.log('🏁 Iniciando tests e2e...');
+  // console.log('🏁 Iniciando tests e2e...');
   // No limpiamos la base de datos al inicio ya que se hizo en la configuración
 });
 
@@ -136,11 +136,11 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  console.log('🧹 Limpieza final de la base de datos de test...');
+  // console.log('🧹 Limpieza final de la base de datos de test...');
   // Limpieza completa al final
   await fullCleanDatabase();
   await prisma.$disconnect();
-  console.log('🏁 Tests e2e finalizados');
+  // console.log('🏁 Tests e2e finalizados');
 });
 
 // Exportar funciones para uso en tests individuales si es necesario

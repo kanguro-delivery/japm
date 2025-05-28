@@ -81,7 +81,6 @@ export class UserController {
         'Admin user tenant information is missing',
       );
     }
-    // TODO: Add role check? Ensure req.user is actually an admin?
     return this.userService.create(createUserDto, tenantId); // <-- Pasar tenantId al servicio
   }
 

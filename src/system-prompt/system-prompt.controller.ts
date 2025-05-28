@@ -23,7 +23,10 @@ import {
   ApiBody,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // Assuming general auth needed
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../auth/enums/role.enum';
 // import { AdminGuard } from '../auth/guards/admin.guard'; // Import if you have an AdminGuard
 
 @ApiTags('System Prompts')
@@ -32,14 +35,15 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // Assuming genera
 export class SystemPromptController {
   private readonly logger = new Logger(SystemPromptController.name);
 
-  constructor(private readonly service: SystemPromptService) {}
+  constructor(private readonly service: SystemPromptService) { }
 
   // --- Create --- //
   @Post()
-  @UseGuards(JwtAuthGuard) // TODO: Replace/add AdminGuard for production
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
   @ApiOperation({
-    summary: 'Create a new system prompt (Admin Only - conceptually)',
+    summary: 'Create a new system prompt (Admin Only)',
   })
   @ApiBody({ type: CreateSystemPromptDto })
   @ApiResponse({
@@ -85,10 +89,11 @@ export class SystemPromptController {
 
   // --- Update --- //
   @Patch(':name')
-  @UseGuards(JwtAuthGuard) // TODO: Replace/add AdminGuard for production
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
   @ApiOperation({
-    summary: 'Update an existing system prompt (Admin Only - conceptually)',
+    summary: 'Update an existing system prompt (Admin Only)',
   })
   @ApiParam({
     name: 'name',
@@ -118,9 +123,10 @@ export class SystemPromptController {
 
   // --- Delete --- //
   @Delete(':name')
-  @UseGuards(JwtAuthGuard) // TODO: Replace/add AdminGuard for production
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiOperation({
-    summary: 'Delete a system prompt (Admin Only - conceptually)',
+    summary: 'Delete a system prompt (Admin Only)',
   })
   @ApiParam({
     name: 'name',

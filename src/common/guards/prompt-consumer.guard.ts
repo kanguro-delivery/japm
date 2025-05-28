@@ -11,11 +11,9 @@ export class PromptConsumerGuard implements CanActivate {
         const user = request.user as AuthenticatedUser;
         const path = request.url;
 
-        this.logger.debug(`[PromptConsumerGuard] Path: ${path}, User: ${JSON.stringify(user)}`);
-
         if (!user || !user.role) {
             this.logger.warn(
-                `[PromptConsumerGuard] DENIED: User or user.role not found. User: ${JSON.stringify(user)}`,
+                `[PromptConsumerGuard] DENIED: User or user.role not found.`
             );
             throw new ForbiddenException(
                 'Authentication required. User details or role missing.',
@@ -24,7 +22,7 @@ export class PromptConsumerGuard implements CanActivate {
 
         const userRoles = Array.isArray(user.role) ? user.role : [user.role];
 
-        const allowedRoles = [Role.PROMPT_CONSUMER, Role.TENANT_ADMIN, Role.ADMIN]; // ADMIN también por si acaso
+        const allowedRoles = [Role.PROMPT_CONSUMER, Role.TENANT_ADMIN, Role.ADMIN];
 
         const hasRequiredRole = userRoles.some(role => allowedRoles.includes(role));
 

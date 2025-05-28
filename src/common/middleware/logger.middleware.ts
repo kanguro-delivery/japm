@@ -9,16 +9,6 @@ export class LoggerMiddleware implements NestMiddleware {
     const start = Date.now(); // Marcar el inicio de la solicitud
     const { ip, method, originalUrl: url } = request;
     const userAgent = request.get('user-agent') || '';
-    // const contentLength = request.get('content-length'); // No usado directamente en el log final propuesto
-
-    // No registrar el cuerpo completo por defecto para evitar verbosidad y posible exposición de datos.
-    // Se puede habilitar condicionalmente o loguear solo ciertos campos si es necesario.
-    // const requestBody = JSON.stringify(request.body);
-
-    // Log inicial de la solicitud (opcional, el log de respuesta es más completo)
-    // this.logger.log(
-    //    `REQ >>> ${method} ${url} - ${userAgent} ${ip}`
-    // );
 
     response.on('finish', () => {
       const duration = Date.now() - start; // Calcular duración

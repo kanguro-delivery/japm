@@ -280,13 +280,13 @@ describe('Region Management E2E Tests', () => {
         .send(createRegionDto)
         .expect(201);
 
-      // Eliminar región - el controller devuelve 200, no 204
+      // Eliminar región - el controller devuelve 204, no 200
       await supertest(app.getHttpServer())
         .delete(
           `/projects/${testProject.id}/regions/${createRegionDto.languageCode}`,
         )
         .set('Authorization', `Bearer ${authToken}`)
-        .expect(200);
+        .expect(204);
 
       // Verificar que ya no existe
       await supertest(app.getHttpServer())

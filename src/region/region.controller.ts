@@ -58,7 +58,7 @@ export class RegionController {
   constructor(
     private readonly regionService: RegionService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) {}
+  ) { }
 
   private getFindAllCacheKey(projectId: string): string {
     return `/api/projects/${projectId}/regions`;
@@ -114,7 +114,6 @@ export class RegionController {
     );
     const cacheKey = this.getFindAllCacheKey(projectId);
     await this.cacheManager.del(cacheKey);
-    console.log(`Cache invalidated for key: ${cacheKey}`);
     return newRegion as RegionDto;
   }
 
@@ -249,7 +248,7 @@ export class RegionController {
   ): Promise<RegionDto> {
     const projectId = req.projectId;
     this.logger.debug(
-      `[update] Received PATCH for projectId: ${projectId}, langCode: ${langCode}. Body: ${JSON.stringify(updateRegionDto, null, 2)}`,
+      `[update] Updating region ${langCode} for projectId: ${projectId}. Body: ${JSON.stringify(updateRegionDto, null, 2)}`,
     );
     const updatedRegion = await this.regionService.update(
       langCode,
@@ -258,15 +257,15 @@ export class RegionController {
     );
     const cacheKey = this.getFindAllCacheKey(projectId);
     await this.cacheManager.del(cacheKey);
-    console.log(`Cache invalidated for key: ${cacheKey}`);
     return updatedRegion as RegionDto;
   }
 
   @Delete(':langCode')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete region',
     description:
-      'Permanently deletes a region. This is a destructive operation that requires admin privileges.',
+      'Deletes a region by its language code. Accessible by global admins or tenant admins.',
   })
   @ApiParam({
     name: 'projectId',
@@ -282,7 +281,7 @@ export class RegionController {
   })
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
-    description: 'Region successfully deleted',
+    description: 'Region deleted successfully',
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
@@ -302,9 +301,11 @@ export class RegionController {
     @Param('langCode') langCode: string,
   ): Promise<void> {
     const projectId = req.projectId;
+    this.logger.debug(
+      `[remove] Deleting region ${langCode} for projectId: ${projectId}`,
+    );
     await this.regionService.remove(langCode, projectId);
     const cacheKey = this.getFindAllCacheKey(projectId);
     await this.cacheManager.del(cacheKey);
-    console.log(`Cache invalidated for key: ${cacheKey}`);
   }
 }
