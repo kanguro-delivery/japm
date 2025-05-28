@@ -84,27 +84,85 @@ japm/
 └── k8s/                    # Kubernetes manifests
 ```
 
-## Development Commands
+## Scripts
+
+### Docker
 
 ```bash
-# Development
-npm run start:dev          # Start in watch mode
-npm run build              # Build for production
-npm run start:prod         # Start production build
+# Desarrollo
+docker build -f Dockerfile.dev -t japm-dev .
+docker run -p 3000:3000 japm-dev
 
-# Database
-./init_db.sh               # Initialize database and seed data
-npx prisma studio          # Database visual editor
-npx prisma migrate dev     # Create and apply migration
+# Producción
+docker build -f Dockerfile.production -t japm-prod .
+docker run -p 3000:3000 japm-prod
 
-# Testing
-npm run test               # Run unit tests
-npm run test:e2e          # Run end-to-end tests
-npm run test:cov          # Run tests with coverage
+# Debug
+docker build -f Dockerfile.debug -t japm-debug .
+docker run -p 3000:3000 japm-debug
+```
 
-# Linting
-npm run lint              # Check code style
-npm run format            # Format code
+### Base de Datos
+
+```bash
+# Inicializar la base de datos
+./init_db.sh
+
+# Ejecutar migraciones
+./run-migrations.sh
+
+# Crear una nueva migración
+npx prisma migrate dev --name nombre_de_la_migracion
+
+# Generar el cliente de Prisma
+npx prisma generate
+```
+
+### Inicialización en Producción
+
+```bash
+# 1. Configurar la base de datos
+# Asegúrate de que la base de datos existe y las credenciales son correctas
+mysql -u root -p
+CREATE DATABASE japm;
+CREATE USER 'japm_user'@'localhost' IDENTIFIED BY 'japm_password';
+GRANT ALL PRIVILEGES ON japm.* TO 'japm_user'@'localhost';
+FLUSH PRIVILEGES;
+
+# 2. Aplicar migraciones en producción
+npx prisma migrate deploy
+
+# 3. Generar el cliente de Prisma
+npx prisma generate
+
+# 4. Verificar el estado de las migraciones
+npx prisma migrate status
+```
+
+### Desarrollo
+
+```bash
+# Instalar dependencias
+npm install
+
+# Ejecutar en modo desarrollo
+npm run start:dev
+
+# Ejecutar tests
+npm run test
+
+# Ejecutar linting
+npm run lint
+```
+
+### Docker Compose
+
+```bash
+# Desarrollo
+docker-compose up
+
+# Producción
+docker-compose -f docker-compose.production.yml up
 ```
 
 ## Docker Support
@@ -112,18 +170,23 @@ npm run format            # Format code
 ### Development with Docker
 
 ```bash
-# Quick start with Docker Compose
-./run_docker.sh dev
+# Desarrollo con Docker Compose
+docker-compose up
+
+# O usando el Dockerfile de desarrollo
+docker build -f Dockerfile.dev -t japm-dev .
+docker run -p 3000:3000 japm-dev
 ```
 
 ### Production Deployment
 
 ```bash
-# Build and deploy production stack
-./deploy-production.sh start
+# Construir y ejecutar en producción
+docker build -f Dockerfile.production -t japm-prod .
+docker run -p 3000:3000 japm-prod
 
-# View logs
-./deploy-production.sh logs japm-api
+# O usando Docker Compose para producción
+docker-compose -f docker-compose.production.yml up
 ```
 
 ## Environment Configuration
@@ -132,8 +195,8 @@ Key environment variables:
 
 ```bash
 # Database
-DATABASE_URL="file:./prisma/japm.db"  # SQLite
-# DATABASE_URL="mysql://user:pass@localhost:3306/japm"  # MySQL
+DATABASE_URL="mysql://japm_user:japm_password@localhost:3306/japm"  # MySQL
+#DATABASE_URL="file:./prisma/japm.db"  # SQLite
 # DATABASE_URL="postgresql://user:pass@localhost:5432/japm"  # PostgreSQL
 
 # Application
