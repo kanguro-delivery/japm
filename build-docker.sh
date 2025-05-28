@@ -50,7 +50,8 @@ show_help() {
     echo "  -t, --tag TAG            Image tag (default: $DEFAULT_TAG)"
     echo "  -r, --registry REGISTRY  Target registry (e.g: my-registry.com)"
     echo "  -p, --platform PLATFORM  Target platform (default: $DEFAULT_PLATFORM)"
-    echo "      --production         Use Dockerfile.production instead of Dockerfile"
+    echo "      --production         Use Dockerfile.production"
+    echo "      --dev                Use Dockerfile.dev"
     echo "      --multi-arch         Build for multiple architectures"
     echo "      --push               Automatic push after build"
     echo "      --no-cache           Build without using cache"
@@ -62,9 +63,9 @@ show_help() {
     echo "  DOCKER_BUILDKIT          Enable BuildKit (default: 1)"
     echo ""
     echo "Examples:"
-    echo "  $0                                    # Basic build"
+    echo "  $0 --dev                             # Development build"
     echo "  $0 --production                      # Production build"
-    echo "  $0 --name japm --tag 1.0.0          # Custom name and tag"
+    echo "  $0 --production --name japm --tag 1.0.0 # Custom name and tag for production"
     echo "  $0 --registry my-reg.com --push      # Build and push to registry"
     echo "  $0 --multi-arch --production         # Multi-architecture for production"
     echo ""
@@ -207,7 +208,7 @@ main() {
     local image_name="$DEFAULT_IMAGE_NAME"
     local tag="$DEFAULT_TAG"
     local platform="$DEFAULT_PLATFORM"
-    local dockerfile="Dockerfile"
+    local dockerfile=""
     local push="false"
     local no_cache="false"
     local multi_arch="false"
@@ -235,6 +236,11 @@ main() {
             --production)
                 production="true"
                 dockerfile="Dockerfile.production"
+                shift
+                ;;
+            --dev)
+                production="false"
+                dockerfile="Dockerfile.dev"
                 shift
                 ;;
             --multi-arch)
@@ -276,7 +282,14 @@ main() {
     # Check dependencies
     check_dependencies
     
-    # Check Dockerfile
+    # Final check for Dockerfile selection
+    if [ -z "$dockerfile" ]; then
+        error "You must specify either --production or --dev to select a Dockerfile."
+        show_help
+        exit 1
+    fi
+    
+    # Check if the selected Dockerfile exists
     check_dockerfile "$dockerfile"
     
     # Prepare environment

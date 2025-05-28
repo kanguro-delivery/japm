@@ -81,10 +81,6 @@ export class ProjectGuard implements CanActivate {
         );
       }
 
-      this.logger.debug(
-        `[ProjectGuard] Project DB TenantID: "${project.tenantId}", User Token TenantID: "${user.tenantId}" for Project: "${project.name}" (ID: "${projectId}")`
-      );
-
       // 5. Check if the authenticated user owns the project (using tenantId)
       if (project.tenantId !== user.tenantId) {
         this.logger.warn(

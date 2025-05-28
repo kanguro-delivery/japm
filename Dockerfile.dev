@@ -2,46 +2,29 @@
 # Development Dockerfile for JAPM API
 # =====================================
 
-FROM node:20-slim
+# ---- Base Node para Desarrollo ----
+FROM node:20-alpine
+WORKDIR /usr/src/app
 
-# Install necessary tools for development
-RUN apt-get update && apt-get install -y \
-    sqlite3 \
-    openssl \
-    ca-certificates \
-    git \
-    curl \
-    --no-install-recommends && \
-    rm -rf /var/lib/apt/lists/*
+# Instala openssl (Prisma puede necesitarlo) y git (a veces útil en dev)
+RUN apk add --no-cache openssl git
 
-WORKDIR /app
+# Copia package.json y package-lock.json
+COPY package*.json ./
 
-# Create non-root user for development
-RUN addgroup --gid 1001 nodejs && \
-    adduser --uid 1001 --gid 1001 --disabled-password --gecos "" japm
+# Instala TODAS las dependencias (incluyendo devDependencies)
+RUN npm install
 
-# Copy package files
-COPY package.json package-lock.json ./
+# Copia el schema de Prisma. El resto del código se montará como volumen.
+COPY prisma ./prisma/
 
-# Install all dependencies (including devDependencies for development)
-RUN npm ci
+# Genera el cliente de Prisma
+RUN npx prisma generate
 
-# Change ownership of the node_modules to the japm user
-RUN chown -R japm:nodejs /app
+# Expone el puerto de la aplicación y el puerto de depuración de Node.js
+EXPOSE 3000 9229
 
-# Switch to non-root user
-USER japm
-
-# Expose application and debug ports
-EXPOSE 3001 9229
-
-# Set environment variables for development
-ENV NODE_ENV=development
-ENV PORT=3001
-
-# Add health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3001/health || exit 1
-
-# Default command for development with hot reload and debug
-CMD ["npm", "run", "start:debug"] 
+# Comando por defecto para iniciar en modo desarrollo con watch
+# El código fuente se montará en /usr/src/app en docker-compose.yml o con 'docker run -v'
+# 'npm run start:dev' debería manejar la recarga en caliente
+CMD ["npm", "run", "start:dev"] 

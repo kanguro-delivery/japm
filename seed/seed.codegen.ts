@@ -49,7 +49,7 @@ Remember that your code will be used in production environments.`,
    - Validate against security policies
    - Ensure compliance with standards`,
 
-        'user-code-request': `{{prompt:guard-code-generation:latest}}
+        'user-code-request': `{{prompt:guard-codegen:latest}}
         
 Code Generation Request:
 - Language: {{language}}
@@ -188,7 +188,7 @@ STRICT CODE GENERATION VALIDATION:
    - Follow legal requirements`,
 
         'user-code-request': `
-{{prompt:guard-code-generation:latest}}        
+{{prompt:guard-codegen:latest}}        
 Code Generation Request:
 - Language: {{language}}
 - Purpose: {{purpose}}
@@ -426,84 +426,6 @@ Manejo de Errores:
     }
 };
 
-// Función para crear traducciones en español
-async function createSpanishTranslations(projectId: string) {
-    console.log(`Creating Spanish translations for project ${projectId}...`);
-    const targetLanguageCode = 'es-ES';
-
-    const promptVersions = await prisma.promptVersion.findMany({
-        where: {
-            prompt: {
-                projectId: projectId
-            }
-        },
-        include: {
-            prompt: { select: { id: true } }
-        }
-    });
-
-    const promptAssetVersions = await prisma.promptAssetVersion.findMany({
-        where: {
-            asset: {
-                projectId: projectId
-            }
-        },
-        include: {
-            asset: true
-        }
-    });
-
-    // Crear traducciones para promptversion
-    for (const version of promptVersions) {
-        if (version.languageCode === targetLanguageCode) {
-            console.log(`PromptVersion ${version.id} (Prompt: ${version.prompt.id}) is already in ${targetLanguageCode}. Skipping Spanish translation.`);
-            continue;
-        }
-        const translation = codegenTranslations.translations.es.prompts[version.prompt.id] || version.promptText;
-        await prisma.promptTranslation.upsert({
-            where: {
-                versionId_languageCode: {
-                    versionId: version.id,
-                    languageCode: targetLanguageCode
-                }
-            },
-            update: {
-                promptText: translation
-            },
-            create: {
-                versionId: version.id,
-                languageCode: targetLanguageCode,
-                promptText: translation
-            }
-        });
-        console.log(`Created Spanish translation for prompt version ${version.id}`);
-    }
-
-    // Crear traducciones para promptassetversion
-    for (const version of promptAssetVersions) {
-        const translation = codegenTranslations.translations.es.assets[version.asset.key] || version.value;
-        await prisma.assetTranslation.upsert({
-            where: {
-                versionId_languageCode: {
-                    versionId: version.id,
-                    languageCode: 'es-ES'
-                }
-            },
-            update: {
-                value: translation
-            },
-            create: {
-                versionId: version.id,
-                languageCode: 'es-ES',
-                value: translation
-            }
-        });
-        console.log(`Created Spanish translation for prompt asset version ${version.id}`);
-    }
-
-    console.log(`Finished creating Spanish translations for project ${projectId}`);
-}
-
 // Función slugify (igual que en los servicios)
 function slugify(text: string): string {
     return text
@@ -688,12 +610,46 @@ async function main() {
                     }
                 },
                 update: {
-                    promptText: prompt.promptText
+                    promptText: prompt.promptText,
+                    languageCode: 'en-US'
                 },
                 create: {
                     promptId: createdPrompt.id,
                     versionTag: '1.0.0',
-                    promptText: prompt.promptText
+                    promptText: prompt.promptText,
+                    languageCode: 'en-US'
+                }
+            });
+
+            // Create Spanish translation
+            await prisma.promptTranslation.upsert({
+                where: {
+                    versionId_languageCode: {
+                        versionId: (await prisma.promptVersion.findUnique({
+                            where: {
+                                promptId_versionTag: {
+                                    promptId: createdPrompt.id,
+                                    versionTag: '1.0.0'
+                                }
+                            }
+                        }))!.id,
+                        languageCode: 'es-ES'
+                    }
+                },
+                update: {
+                    promptText: codegenTranslations.translations.es.prompts[prompt.id] || prompt.promptText
+                },
+                create: {
+                    versionId: (await prisma.promptVersion.findUnique({
+                        where: {
+                            promptId_versionTag: {
+                                promptId: createdPrompt.id,
+                                versionTag: '1.0.0'
+                            }
+                        }
+                    }))!.id,
+                    languageCode: 'es-ES',
+                    promptText: codegenTranslations.translations.es.prompts[prompt.id] || prompt.promptText
                 }
             });
         } catch (error) {
@@ -759,19 +715,50 @@ async function main() {
                 }
             },
             update: {
-                value: asset.value
+                value: asset.value,
+                languageCode: 'en-US'
             },
             create: {
                 assetId: createdAsset.id,
                 versionTag: '1.0.0',
-                value: asset.value
+                value: asset.value,
+                languageCode: 'en-US'
+            }
+        });
+
+        // Create Spanish translation for asset
+        await prisma.assetTranslation.upsert({
+            where: {
+                versionId_languageCode: {
+                    versionId: (await prisma.promptAssetVersion.findUnique({
+                        where: {
+                            assetId_versionTag: {
+                                assetId: createdAsset.id,
+                                versionTag: '1.0.0'
+                            }
+                        }
+                    }))!.id,
+                    languageCode: 'es-ES'
+                }
+            },
+            update: {
+                value: codegenTranslations.translations.es.assets[asset.key] || asset.value
+            },
+            create: {
+                versionId: (await prisma.promptAssetVersion.findUnique({
+                    where: {
+                        assetId_versionTag: {
+                            assetId: createdAsset.id,
+                            versionTag: '1.0.0'
+                        }
+                    }
+                }))!.id,
+                languageCode: 'es-ES',
+                value: codegenTranslations.translations.es.assets[asset.key] || asset.value
             }
         });
     }
     console.log('Created assets for codegen project');
-
-    // Create Spanish translations
-    await createSpanishTranslations(codegenProject.id);
 
     console.log('Finished seeding codegen examples');
 }

@@ -134,7 +134,7 @@ CREATE TABLE `PromptAssetVersion` (
     `status` VARCHAR(191) NOT NULL DEFAULT 'draft',
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
-    `languageCode` VARCHAR(191) NULL,
+    `languageCode` VARCHAR(191) NOT NULL DEFAULT 'en-US',
     `marketplaceStatus` ENUM('NOT_PUBLISHED', 'PENDING_APPROVAL', 'PUBLISHED', 'REJECTED') NOT NULL DEFAULT 'NOT_PUBLISHED',
     `marketplacePublishedAt` DATETIME(3) NULL,
     `marketplaceRequestedAt` DATETIME(3) NULL,

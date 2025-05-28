@@ -4,6 +4,7 @@ import {
   ConflictException,
   ForbiddenException,
   Logger,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { CreatePromptTranslationDto } from './dto/create-prompt-translation.dto';
 import { UpdatePromptTranslationDto } from './dto/update-prompt-translation.dto';
@@ -80,11 +81,16 @@ export class PromptTranslationService {
     languageCode: string,
     query?: ResolveAssetsQueryDto,
   ): Promise<PromptTranslation> {
+    this.logger.debug(
+      `Finding translation for prompt ${promptId}, version ${versionTag}, language ${languageCode} with query params: ${JSON.stringify(query)}`,
+    );
+
     const version = await this.promptVersionService.getByTagOrLatest(
       projectId,
       promptId,
       versionTag,
     );
+
     const translation = await this.prisma.promptTranslation.findUnique({
       where: {
         versionId_languageCode: {
@@ -96,29 +102,15 @@ export class PromptTranslationService {
 
     if (!translation) {
       throw new NotFoundException(
-        `Translation for language "${languageCode}" not found for version "${versionTag}" of prompt "${promptId}".`,
+        `Translation not found for prompt ${promptId}, version ${versionTag}, language ${languageCode}`,
       );
     }
 
-    // Si se solicita el prompt procesado, usamos el ServePromptService
     if (query?.processed) {
-      this.logger.debug(
-        `🚀 [PROCESSED TRANSLATION] Processing translation "${languageCode}" for prompt "${promptId}" v${versionTag} in project "${projectId}" with regionCode="${query.regionCode || 'none'}" and variables="${query.variables || 'none'}"`,
-      );
-
-      let inputVariables: Record<string, any> = {};
-      if (query.variables) {
-        try {
-          inputVariables = JSON.parse(query.variables);
-        } catch (e) {
-          this.logger.warn(
-            `Failed to parse variables JSON string: ${query.variables}. Proceeding without variables for translation ${translation.id}.`,
-          );
-        }
-      }
-
-      const { processedPrompt } =
-        await this.servePromptService.executePromptVersion(
+      this.logger.debug('Processing translation with all references and variables');
+      try {
+        const variables = query.variables ? JSON.parse(query.variables) : {};
+        const result = await this.servePromptService.executePromptVersion(
           {
             projectId,
             promptName: promptId,
@@ -126,64 +118,58 @@ export class PromptTranslationService {
             languageCode: query.regionCode || languageCode,
           },
           {
-            variables: inputVariables,
+            variables,
           },
-          new Set(), // processedPrompts - empty set for new resolution chain
+          new Set(),
           {
             currentDepth: 0,
-            maxDepth: 5, // context with depth control
+            maxDepth: 5,
           },
         );
 
-      this.logger.debug(
-        `✅ [PROCESSED TRANSLATION] ServePromptService returned. Result length: ${processedPrompt.length}`,
-      );
-
-      // Check if prompt references were resolved by looking for remaining placeholders
-      const remainingPlaceholders =
-        processedPrompt.match(/\{\{prompt:[^}]+\}\}/g);
-      if (remainingPlaceholders) {
-        this.logger.warn(
-          `⚠️ [PROCESSED TRANSLATION] Found ${remainingPlaceholders.length} unresolved prompt placeholder(s): ${remainingPlaceholders.join(', ')}`,
-        );
-      } else {
-        this.logger.debug(
-          `✅ [PROCESSED TRANSLATION] All prompt references appear to have been resolved successfully`,
-        );
-      }
-
-      // Reemplazar el texto de la traducción con el procesado
-      translation.promptText = processedPrompt;
-    } else if (query?.resolveAssets) {
-      // Mantener la funcionalidad original de resolveAssets cuando no se usa processed
-      let inputVariables: Record<string, any> = {};
-      if (query.variables) {
-        try {
-          inputVariables = JSON.parse(query.variables);
-        } catch (e) {
+        if (result.metadata?.unresolvedPromptPlaceholders?.length > 0) {
           this.logger.warn(
-            `Failed to parse variables JSON string: ${query.variables}. Proceeding without variables for translation ${translation.id}.`,
+            `Found unresolved prompt placeholders: ${result.metadata.unresolvedPromptPlaceholders.join(
+              ', ',
+            )}`,
           );
         }
+
+        translation.promptText = result.processedPrompt;
+        (translation as any).metadata = {
+          processed: true,
+          unresolvedPromptPlaceholders: result.metadata?.unresolvedPromptPlaceholders || [],
+        };
+      } catch (error) {
+        this.logger.error(
+          `Error processing translation: ${error.message}`,
+          error.stack,
+        );
+        throw new InternalServerErrorException(
+          `Error processing translation: ${error.message}`,
+        );
+      }
+    } else if (query?.resolveAssets) {
+      this.logger.debug('Resolving assets in translation');
+      const regionCode = query.regionCode || languageCode;
+      const environmentId = query.environmentId || '';
+      const result = await this.servePromptService.resolveAssets(
+        translation.promptText,
+        projectId,
+        environmentId,
+        regionCode,
+      );
+
+      if (result.resolvedAssetsMetadata?.length > 0) {
+        this.logger.debug(
+          `Resolved ${result.resolvedAssetsMetadata.length} assets`,
+        );
       }
 
-      // For asset translations, prioritize the language of the translation itself (languageCode).
-      // If query.regionCode is also provided, it could represent a more specific dialect or context for assets.
-      // Current asset logic in servePromptService.resolveAssets takes one languageCode.
-      // We will pass the main translation's languageCode. query.regionCode could be used if asset resolution becomes more granular.
-      const assetLanguageToUse = query.regionCode || languageCode; // Prefer regionCode if specified, else the translation's language
-
-      const { processedText, resolvedAssetsMetadata } =
-        await this.servePromptService.resolveAssets(
-          translation.promptText,
-          promptId,
-          projectId,
-          assetLanguageToUse,
-          inputVariables,
-        );
-      translation.promptText = processedText;
-      // Optionally, attach resolvedAssetsMetadata
-      // (translation as any).resolvedAssetsMetadata = resolvedAssetsMetadata;
+      translation.promptText = result.processedText;
+      (translation as any).metadata = {
+        resolvedAssets: result.resolvedAssetsMetadata || [],
+      };
     }
 
     return translation;

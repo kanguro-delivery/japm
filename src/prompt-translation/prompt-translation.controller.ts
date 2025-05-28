@@ -29,6 +29,7 @@ import { PromptTranslation } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ProjectGuard } from '../common/guards/project.guard';
 import { ResolveAssetsQueryDto } from '../serve-prompt/dto/resolve-assets-query.dto';
+import { Logger } from '@nestjs/common';
 
 @ApiTags('Prompt Translations (within Project/Prompt/Version)')
 @ApiBearerAuth()
@@ -37,6 +38,8 @@ import { ResolveAssetsQueryDto } from '../serve-prompt/dto/resolve-assets-query.
   'projects/:projectId/prompts/:promptId/versions/:versionTag/translations',
 )
 export class PromptTranslationController {
+  private readonly logger = new Logger(PromptTranslationController.name);
+
   constructor(private readonly service: PromptTranslationService) { }
 
   @Post()
@@ -186,6 +189,9 @@ export class PromptTranslationController {
     @Param('languageCode') languageCode: string,
     @Query() query: ResolveAssetsQueryDto,
   ): Promise<PromptTranslation> {
+    this.logger.debug(
+      `Finding translation for prompt ${promptId}, version ${versionTag}, language ${languageCode} with query params: ${JSON.stringify(query)}`,
+    );
     return this.service.findOneByLanguage(
       projectId,
       promptId,

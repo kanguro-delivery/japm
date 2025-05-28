@@ -19,7 +19,7 @@ export class PromptAssetVersionService {
   constructor(
     private prisma: PrismaService,
     private tenantService: TenantService,
-  ) {}
+  ) { }
 
   // Helper para obtener el PromptAsset padre.
   // Devuelve el PromptAsset con su ID CUID.
@@ -247,7 +247,7 @@ export class PromptAssetVersionService {
           versionTag,
           changeMessage: 'Already deleted or never existed',
           status: 'active',
-          languageCode: null,
+          languageCode: 'en-US',
           createdAt: new Date(),
           updatedAt: new Date(),
           marketplaceStatus: 'NOT_PUBLISHED' as any,

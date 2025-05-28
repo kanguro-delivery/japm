@@ -1277,6 +1277,16 @@
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "ID of the prompt",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "description": "ID of the project",
             "schema": {
               "type": "string"
             }

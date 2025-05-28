@@ -403,6 +403,18 @@ export class PromptController {
 
   @Post(':id/load-structure')
   @ApiOperation({ summary: 'Load prompt structure' })
+  @ApiParam({
+    name: 'projectId',
+    description: 'ID of the project',
+    required: true,
+    type: String
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID of the prompt',
+    required: true,
+    type: String
+  })
   @ApiResponse({
     status: 200,
     description: 'Prompt structure loaded successfully',
