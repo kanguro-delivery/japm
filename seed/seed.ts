@@ -135,6 +135,20 @@ async function main() {
     });
     console.log(`Upserted prompt consumer user: ${promptConsumerUser.name} (ID: ${promptConsumerUser.id}, Tenant: ${promptConsumerUser.tenantId})`);
 
+    // Tenant Admin user
+    const tenantAdminUser = await prisma.user.upsert({
+        where: { email: 'tenant_admin@example.com' },
+        update: { name: 'Tenant Admin', password: hashedPassword, role: 'tenant_admin' as Role },
+        create: {
+            email: 'tenant_admin@example.com',
+            name: 'Tenant Admin',
+            password: hashedPassword,
+            tenant: { connect: { id: defaultTenant.id } },
+            role: 'tenant_admin' as Role
+        },
+    });
+    console.log(`Upserted tenant admin user: ${tenantAdminUser.name} (ID: ${tenantAdminUser.id}, Tenant: ${tenantAdminUser.tenantId})`);
+
     // Verificar que los usuarios existen después de crearlos
     const verifyUser = await prisma.user.findUnique({ where: { email: 'test@example.com' } });
     if (verifyUser) {
@@ -148,6 +162,13 @@ async function main() {
         console.log(`Verified prompt consumer exists: ${verifyConsumer.name} (ID: ${verifyConsumer.id}, Tenant: ${verifyConsumer.tenantId})`);
     } else {
         console.error('Prompt consumer user was not created successfully!');
+    }
+
+    const verifyTenantAdmin = await prisma.user.findUnique({ where: { email: 'tenant_admin@example.com' } });
+    if (verifyTenantAdmin) {
+        console.log(`Verified tenant admin exists: ${verifyTenantAdmin.name} (ID: ${verifyTenantAdmin.id}, Tenant: ${verifyTenantAdmin.tenantId})`);
+    } else {
+        console.error('Tenant admin user was not created successfully!');
     }
 
     // 3. Create Default Project
