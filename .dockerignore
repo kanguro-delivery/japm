@@ -1,0 +1,144 @@
+# ===============================================
+# Docker Ignore File for JAPM
+# ===============================================
+
+# Git and version control
+.git
+.gitignore
+.gitattributes
+
+# Node.js
+node_modules
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Package manager lock files (keep package-lock.json)
+pnpm-lock.yaml
+yarn.lock
+
+# Docker files
+Dockerfile
+Dockerfile.dev
+.dockerignore
+docker-compose.yml
+docker-compose.yaml
+docker-compose.*.yml
+
+# Environment variables (except example)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs and editors
+.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+*.sublime-project
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+
+# Build outputs (will be generated in container)
+dist
+build
+.next
+out
+
+# Logs
+logs
+*.log
+log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage
+.nyc_output
+
+# Dependencies
+.pnp
+.pnp.js
+
+# Testing
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Database files (will be mounted as volumes)
+*.db
+*.sqlite
+*.sqlite3
+data/
+uploads/
+
+# Cache directories
+.cache
+.parcel-cache
+
+# Temporary directories
+.temp
+.tmp
+tmp/
+
+# Documentation build
+docs/.vuepress/dist
+
+# Serverless
+.serverless
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# Backup files
+*.backup
+*.bak
+
+# Scripts that are not needed in container
+run_*.sh
+run_*.bat
+scripts/migrate_db.sh
+
+# Local development files
+.cursor/
+
+# Miscellaneous
+*.tgz
+*.tar.gz
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json 

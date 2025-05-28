@@ -1,0 +1,89 @@
+### Test Prompt Consumer Role
+@baseUrl = http://localhost:3000
+
+### 1. Login as admin user (should work)
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### 2. Login as prompt consumer (should work)
+# @name loginConsumer
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "prompt-consumer@example.com",
+  "password": "password123"
+}
+
+### 3. Extract token for prompt consumer
+@consumerToken = {{loginConsumer.response.body.access_token}}
+
+### 4. Try to access users list with consumer (should FAIL - 403 Forbidden)
+GET {{baseUrl}}/users
+Authorization: Bearer {{consumerToken}}
+
+### 5. Try to access serve-prompt with consumer (should WORK)
+POST {{baseUrl}}/serve-prompt/execute/default-project/bienvenida-simple/latest/base
+Authorization: Bearer {{consumerToken}}
+Content-Type: application/json
+
+{
+  "variables": {
+    "customerName": "Juan Pérez"
+  }
+}
+
+### 6. Try to access serve-prompt with Spanish language (should WORK)
+POST {{baseUrl}}/serve-prompt/execute/default-project/bienvenida-simple/latest/lang/es-ES
+Authorization: Bearer {{consumerToken}}
+Content-Type: application/json
+
+{
+  "variables": {
+    "customerName": "María García"
+  }
+}
+
+### 7. Extract admin token
+@adminToken = {{loginAdmin.response.body.access_token}}
+
+### 8. Try to access serve-prompt with admin (should FAIL due to PromptConsumerGuard)
+POST {{baseUrl}}/serve-prompt/execute/default-project/bienvenida-simple/latest/base
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "variables": {
+    "customerName": "Admin Test"
+  }
+}
+
+### 9. Admin can access users management (should WORK)
+GET {{baseUrl}}/users
+Authorization: Bearer {{adminToken}}
+
+### 10. Consumer tries to create user (should FAIL - 403 Forbidden)
+POST {{baseUrl}}/users
+Authorization: Bearer {{consumerToken}}
+Content-Type: application/json
+
+{
+  "name": "Hacker User",
+  "email": "hacker@example.com",
+  "password": "password123",
+  "role": "admin"
+}
+
+### 11. Consumer tries to access projects (should FAIL - 403 Forbidden)
+GET {{baseUrl}}/projects
+Authorization: Bearer {{consumerToken}}
+
+### 12. Consumer tries to access tenants (should FAIL - 403 Forbidden) 
+GET {{baseUrl}}/tenants
+Authorization: Bearer {{consumerToken}} 
