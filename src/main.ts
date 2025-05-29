@@ -101,4 +101,5 @@ async function bootstrap() {
   `;
   Logger.log(funnyArt, 'Bootstrap');
 }
+
 bootstrap();
