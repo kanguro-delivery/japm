@@ -40,4 +40,10 @@ export class UpdatePromptDto {
   @IsArray()
   @IsString({ each: true })
   tagIds?: string[];
+
+  // Método para validar que al menos un campo está presente
+  validateAtLeastOneField() {
+    const fields = ['name', 'description', 'type', 'tagIds'];
+    return fields.some(field => this[field] !== undefined);
+  }
 }

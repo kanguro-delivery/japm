@@ -698,6 +698,9 @@
           "200": {
             "description": "Region deleted successfully"
           },
+          "204": {
+            "description": ""
+          },
           "401": {
             "description": "Unauthorized - Invalid or expired token"
           },
@@ -1116,7 +1119,54 @@
             "bearer": []
           }
         ],
-        "summary": "Update a prompt",
+        "summary": "Update a prompt (full update)",
+        "tags": [
+          "Prompts"
+        ]
+      },
+      "patch": {
+        "operationId": "PromptController_partialUpdate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Prompt ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "description": "Project ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePromptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Prompt updated successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a prompt (partial update)",
         "tags": [
           "Prompts"
         ]
@@ -1154,6 +1204,56 @@
           }
         ],
         "summary": "Delete a prompt",
+        "tags": [
+          "Prompts"
+        ]
+      }
+    },
+    "/api/projects/{projectId}/prompts/generate-structure": {
+      "post": {
+        "operationId": "PromptController_generateStructure",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "description": "Project ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GeneratePromptStructureDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Prompt structure generated successfully"
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Generate a prompt structure from user input",
         "tags": [
           "Prompts"
         ]
@@ -1642,7 +1742,7 @@
     },
     "/api/tenants": {
       "post": {
-        "description": "Creates a new tenant in the system. This operation requires global admin privileges.",
+        "description": "Creates a new tenant in the system. This operation requires admin or tenant admin privileges.",
         "operationId": "TenantController_create",
         "parameters": [],
         "requestBody": {
@@ -1673,7 +1773,7 @@
             "description": "Unauthorized - Invalid or expired token"
           },
           "403": {
-            "description": "Forbidden - Global admin role required"
+            "description": "Forbidden - Admin or tenant admin role required"
           },
           "409": {
             "description": "Tenant name already exists - The provided name is already in use"
@@ -1690,7 +1790,7 @@
         ]
       },
       "get": {
-        "description": "Retrieves a list of all tenants in the system. This operation requires global admin privileges.",
+        "description": "Retrieves a list of all tenants in the system. This operation requires admin or tenant admin privileges.",
         "operationId": "TenantController_findAll",
         "parameters": [],
         "responses": {
@@ -1711,7 +1811,7 @@
             "description": "Unauthorized - Invalid or expired token"
           },
           "403": {
-            "description": "Forbidden - Global admin role required"
+            "description": "Forbidden - Admin or tenant admin role required"
           }
         },
         "security": [
@@ -1727,7 +1827,7 @@
     },
     "/api/tenants/{tenantId}": {
       "get": {
-        "description": "Retrieves a specific tenant by their unique ID. Accessible by global admins or tenant admins of the specified tenant.",
+        "description": "Retrieves a specific tenant by their unique ID. Accessible by admins or tenant admins.",
         "operationId": "TenantController_findOne",
         "parameters": [
           {
@@ -1756,7 +1856,7 @@
             "description": "Unauthorized - Invalid or expired token"
           },
           "403": {
-            "description": "Forbidden - Insufficient permissions to access this tenant"
+            "description": "Forbidden - Admin or tenant admin role required"
           },
           "404": {
             "description": "Tenant not found - The specified ID does not exist"
@@ -1835,7 +1935,7 @@
         ]
       },
       "delete": {
-        "description": "Permanently deletes a tenant from the system. This is a destructive operation that requires global admin privileges.",
+        "description": "Permanently deletes a tenant from the system. This is a destructive operation that requires admin or tenant admin privileges.",
         "operationId": "TenantController_remove",
         "parameters": [
           {
@@ -1857,7 +1957,7 @@
             "description": "Unauthorized - Invalid or expired token"
           },
           "403": {
-            "description": "Forbidden - Global admin role required"
+            "description": "Forbidden - Admin or tenant admin role required"
           },
           "404": {
             "description": "Tenant not found - The specified ID does not exist"
@@ -6453,6 +6553,19 @@
           }
         }
       },
+      "GeneratePromptStructureDto": {
+        "type": "object",
+        "properties": {
+          "userPrompt": {
+            "type": "string",
+            "description": "The user prompt text to be analyzed and structured.",
+            "example": "Create a button that says \"Hello World\" in English and \"Hola Mundo\" in Spanish."
+          }
+        },
+        "required": [
+          "userPrompt"
+        ]
+      },
       "CreateProjectDto": {
         "type": "object",
         "properties": {
@@ -7241,6 +7354,24 @@
           }
         }
       },
+      "AssetTranslationDto": {
+        "type": "object",
+        "properties": {
+          "languageCode": {
+            "type": "string",
+            "description": "Código de idioma de la traducción (e.g., es-ES, fr-FR).",
+            "example": "fr-FR"
+          },
+          "value": {
+            "type": "string",
+            "description": "Valor traducido del asset para esta versión y idioma."
+          }
+        },
+        "required": [
+          "languageCode",
+          "value"
+        ]
+      },
       "CreatePromptAssetVersionDto": {
         "type": "object",
         "properties": {
@@ -7263,6 +7394,13 @@
             "maxLength": 10,
             "description": "Código de idioma para la versión del asset (e.g., en-US, es-ES). Se obtiene del listado de regiones del proyecto.",
             "example": "en-US"
+          },
+          "translations": {
+            "description": "Traducciones para esta versión del asset.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetTranslationDto"
+            }
           }
         },
         "required": [

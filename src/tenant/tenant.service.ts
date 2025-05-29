@@ -3,6 +3,7 @@ import {
   NotFoundException,
   Logger,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Tenant, Prisma, Role } from '@prisma/client';
@@ -19,7 +20,7 @@ export class TenantService {
     private prisma: PrismaService,
     private userService: UserService,
     private auditLogger: AuditLoggerService,
-  ) {}
+  ) { }
 
   async create(
     createTenantDto: CreateTenantDto,
@@ -27,12 +28,16 @@ export class TenantService {
   ): Promise<Tenant> {
     const {
       name,
-      /* description, */ marketplaceRequiresApproval,
+      marketplaceRequiresApproval,
       initialAdminUser,
     } = createTenantDto;
 
+    if (!initialAdminUser || !initialAdminUser.email || !initialAdminUser.password) {
+      throw new BadRequestException('Initial admin user details are required (email and password)');
+    }
+
     const existingTenantByName = await this.prisma.tenant.findFirst({
-      where: { name }, // Cambiado a findFirst
+      where: { name },
       select: { id: true },
     });
     if (existingTenantByName) {
@@ -40,25 +45,26 @@ export class TenantService {
     }
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        const newTenant = await tx.tenant.create({
-          data: {
-            name,
-            // description: description, // Eliminado
-            marketplaceRequiresApproval: marketplaceRequiresApproval ?? true,
-          },
-        });
-        this.logger.log(
-          `Tenant created: ${newTenant.name} (ID: ${newTenant.id})`,
-        );
+      // Primero creamos el tenant
+      const newTenant = await this.prisma.tenant.create({
+        data: {
+          name,
+          marketplaceRequiresApproval: marketplaceRequiresApproval ?? true,
+        },
+      });
+      this.logger.log(
+        `Tenant created: ${newTenant.name} (ID: ${newTenant.id})`,
+      );
 
-        const adminUserDto: CreateUserDto = {
-          email: initialAdminUser.email,
-          password: initialAdminUser.password,
-          name: initialAdminUser.name || 'Tenant Admin',
-          role: Role.tenant_admin,
-        };
+      // Luego creamos el usuario administrador
+      const adminUserDto: CreateUserDto = {
+        email: initialAdminUser.email,
+        password: initialAdminUser.password,
+        name: initialAdminUser.name || 'Tenant Admin',
+        role: Role.tenant_admin,
+      };
 
+      try {
         await this.userService.create(adminUserDto, newTenant.id, adminUserId);
         this.logger.log(
           `Initial admin user created for tenant ${newTenant.id}: ${adminUserDto.email}`,
@@ -77,7 +83,13 @@ export class TenantService {
         );
 
         return newTenant;
-      });
+      } catch (error) {
+        // Si falla la creación del usuario, eliminamos el tenant
+        await this.prisma.tenant.delete({
+          where: { id: newTenant.id },
+        });
+        throw error;
+      }
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

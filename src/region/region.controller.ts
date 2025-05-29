@@ -273,6 +273,7 @@ export class RegionController {
   }
 
   @Delete(':langCode')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete region',
     description:

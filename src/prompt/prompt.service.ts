@@ -295,6 +295,11 @@ export class PromptService {
     tenantId: string,
     ownerUserId: string,
   ): Promise<PromptWithRelations> {
+    // Validar que al menos un campo está presente
+    if (!updateDto.validateAtLeastOneField()) {
+      throw new BadRequestException('At least one field must be provided for update');
+    }
+
     const {
       name,
       description,
@@ -321,19 +326,24 @@ export class PromptService {
     }
 
     let tagsToConnect: Prisma.TagWhereUniqueInput[] | undefined = undefined;
-    if (tagIds && tagIds.length > 0) {
-      const existingTags = await this.prisma.tag.findMany({
-        where: { id: { in: tagIds }, projectId: projectId },
-        select: { id: true, name: true },
-      });
-      if (existingTags.length !== tagIds.length) {
-        const foundTagIds = new Set(existingTags.map((t) => t.id));
-        const missingTags = tagIds.filter((id) => !foundTagIds.has(id));
-        throw new NotFoundException(
-          `Tags not found in project '${projectId}': ${missingTags.join(', ')}`,
-        );
+    if (tagIds !== undefined) {
+      if (tagIds.length > 0) {
+        const existingTags = await this.prisma.tag.findMany({
+          where: { id: { in: tagIds }, projectId: projectId },
+          select: { id: true, name: true },
+        });
+        if (existingTags.length !== tagIds.length) {
+          const foundTagIds = new Set(existingTags.map((t) => t.id));
+          const missingTags = tagIds.filter((id) => !foundTagIds.has(id));
+          throw new NotFoundException(
+            `Tags not found in project '${projectId}': ${missingTags.join(', ')}`,
+          );
+        }
+        tagsToConnect = existingTags.map((tag) => ({ id: tag.id }));
+      } else {
+        // Si se envía un array vacío, se eliminan todos los tags
+        tagsToConnect = [];
       }
-      tagsToConnect = existingTags.map((tag) => ({ id: tag.id }));
     }
 
     try {
@@ -346,11 +356,11 @@ export class PromptService {
           tenantId: tenantId,
         },
         data: {
-          name: name,
-          description: description,
-          type: type,
-          ownerUserId: ownerUserId,
-          tags: tagsToConnect ? { set: tagsToConnect } : undefined,
+          ...(name !== undefined && { name }),
+          ...(description !== undefined && { description }),
+          ...(type !== undefined && { type }),
+          ...(ownerUserId && { ownerUserId }),
+          ...(tagsToConnect !== undefined && { tags: { set: tagsToConnect } }),
           ...restData,
         } as any,
         include: {

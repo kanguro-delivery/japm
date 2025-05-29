@@ -26,7 +26,7 @@ export class PromptVersionService {
     private prisma: PrismaService,
     private tenantService: TenantService,
     private servePromptService: ServePromptService,
-  ) {}
+  ) { }
 
   // Helper to verify prompt access
   private async verifyPromptAccess(
@@ -55,17 +55,11 @@ export class PromptVersionService {
   ): Promise<PromptVersion> {
     await this.verifyPromptAccess(projectId, promptId); // Ensure prompt exists in project
 
-    // versionTag no viene de createDto. Se asignará '1.0.0' por defecto para la creación inicial.
-    // const { ...versionData } = createDto; // No es necesario desestructurar así ahora
-
-    const newVersionTag = '1.0.0'; // Asignación directa
-
     try {
       return await this.prisma.promptVersion.create({
         data: {
-          ...createDto, // Usar todos los campos de createDto
-          versionTag: newVersionTag,
-          prompt: { connect: { id: promptId } }, // Connect using the prompt CUID
+          ...createDto,
+          prompt: { connect: { id: promptId } },
         },
       });
     } catch (error) {
@@ -73,16 +67,14 @@ export class PromptVersionService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        // Esto ahora atrapa versionTag duplicado para el MISMO promptId (CUID)
         throw new ConflictException(
-          `Version tag "${newVersionTag}" already exists for prompt "${promptId}".`,
+          `Version tag "${createDto.versionTag}" already exists for prompt "${promptId}".`,
         );
       }
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2025'
       ) {
-        // Debería ser atrapado por verifyPromptAccess, pero se mantiene como respaldo
         throw new NotFoundException(`Prompt with ID "${promptId}" not found.`);
       }
       throw error;

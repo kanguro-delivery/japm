@@ -1,4 +1,4 @@
-import { Controller, Post, Put, Delete, Body, Param, Req, UseGuards, UnauthorizedException, Get, NotFoundException } from '@nestjs/common';
+import { Controller, Post, Put, Delete, Body, Param, Req, UseGuards, UnauthorizedException, Get, NotFoundException, Patch } from '@nestjs/common';
 import { PromptService } from './prompt.service';
 import { CreatePromptDto } from './dto/create-prompt.dto';
 import { UpdatePromptDto } from './dto/update-prompt.dto';
@@ -6,13 +6,18 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ProjectGuard } from '../common/guards/project.guard';
 import { AuthenticatedRequest } from '../common/types/request.types';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { GeneratePromptStructureDto } from './dto/generate-prompt-structure.dto';
+import { RegionService } from '../region/region.service';
 
 @ApiTags('Prompts')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, ProjectGuard)
 @Controller('projects/:projectId/prompts')
 export class PromptController {
-  constructor(private readonly promptService: PromptService) { }
+  constructor(
+    private readonly promptService: PromptService,
+    private readonly regionService: RegionService
+  ) { }
 
   @Get()
   @ApiOperation({ summary: 'Get all prompts for a project' })
@@ -63,11 +68,34 @@ export class PromptController {
   }
 
   @Put(':id')
-  @ApiOperation({ summary: 'Update a prompt' })
+  @ApiOperation({ summary: 'Update a prompt (full update)' })
   @ApiParam({ name: 'projectId', description: 'Project ID' })
   @ApiParam({ name: 'id', description: 'Prompt ID' })
   @ApiResponse({ status: 200, description: 'Prompt updated successfully' })
   async update(
+    @Param('id') id: string,
+    @Param('projectId') projectId: string,
+    @Body() updateDto: UpdatePromptDto,
+    @Req() req: AuthenticatedRequest
+  ) {
+    if (!req.user) {
+      throw new UnauthorizedException('No autenticado');
+    }
+    return this.promptService.update(
+      id,
+      updateDto,
+      projectId,
+      req.user.tenantId,
+      req.user.userId
+    );
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a prompt (partial update)' })
+  @ApiParam({ name: 'projectId', description: 'Project ID' })
+  @ApiParam({ name: 'id', description: 'Prompt ID' })
+  @ApiResponse({ status: 200, description: 'Prompt updated successfully' })
+  async partialUpdate(
     @Param('id') id: string,
     @Param('projectId') projectId: string,
     @Body() updateDto: UpdatePromptDto,
@@ -103,6 +131,33 @@ export class PromptController {
       projectId,
       req.user.userId,
       req.user.tenantId
+    );
+  }
+
+  @Post('generate-structure')
+  @ApiOperation({ summary: 'Generate a prompt structure from user input' })
+  @ApiParam({ name: 'projectId', description: 'Project ID' })
+  @ApiResponse({ status: 200, description: 'Prompt structure generated successfully' })
+  async generateStructure(
+    @Param('projectId') projectId: string,
+    @Body() generateDto: GeneratePromptStructureDto,
+    @Req() req: AuthenticatedRequest
+  ) {
+    if (!req.user) {
+      throw new UnauthorizedException('No autenticado');
+    }
+
+    // Obtener las regiones del proyecto
+    const regions = await this.regionService.findAll(projectId);
+    const projectRegions = regions.map(region => ({
+      languageCode: region.languageCode,
+      name: region.name
+    }));
+
+    return this.promptService.generateStructure(
+      projectId,
+      generateDto.userPrompt,
+      projectRegions
     );
   }
 }

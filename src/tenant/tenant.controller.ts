@@ -24,8 +24,8 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard'; // Asumiendo que existe
-import { Roles } from '../auth/decorators/roles.decorator'; // Asumiendo que existe
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import { Request } from 'express';
 import { User } from '@prisma/client';
@@ -42,11 +42,11 @@ export class TenantController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.TENANT_ADMIN)
   @ApiOperation({
     summary: 'Create new tenant',
     description:
-      'Creates a new tenant in the system. This operation requires global admin privileges.',
+      'Creates a new tenant in the system. This operation requires admin or tenant admin privileges.',
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -68,7 +68,7 @@ export class TenantController {
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'Forbidden - Global admin role required',
+    description: 'Forbidden - Admin or tenant admin role required',
   })
   create(
     @Body() createTenantDto: CreateTenantDto,
@@ -82,11 +82,11 @@ export class TenantController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.TENANT_ADMIN)
   @ApiOperation({
     summary: 'Get all tenants',
     description:
-      'Retrieves a list of all tenants in the system. This operation requires global admin privileges.',
+      'Retrieves a list of all tenants in the system. This operation requires admin or tenant admin privileges.',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -99,7 +99,7 @@ export class TenantController {
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'Forbidden - Global admin role required',
+    description: 'Forbidden - Admin or tenant admin role required',
   })
   findAll(): Promise<TenantDto[]> {
     return this.tenantService.findAll();
@@ -111,7 +111,7 @@ export class TenantController {
   @ApiOperation({
     summary: 'Get tenant by ID',
     description:
-      'Retrieves a specific tenant by their unique ID. Accessible by global admins or tenant admins of the specified tenant.',
+      'Retrieves a specific tenant by their unique ID. Accessible by admins or tenant admins.',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -128,7 +128,7 @@ export class TenantController {
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'Forbidden - Insufficient permissions to access this tenant',
+    description: 'Forbidden - Admin or tenant admin role required',
   })
   @ApiParam({
     name: 'tenantId',
@@ -143,11 +143,6 @@ export class TenantController {
   ): Promise<TenantDto> {
     if (!req.user) {
       throw new UnauthorizedException('User not authenticated');
-    }
-    if (req.user.role === Role.TENANT_ADMIN && req.user.tenantId !== tenantId) {
-      throw new ForbiddenException(
-        'You are not authorized to access this tenant.',
-      );
     }
     return this.tenantService.findOne(tenantId);
   }
@@ -211,12 +206,12 @@ export class TenantController {
 
   @Delete(':tenantId')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.TENANT_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete tenant',
     description:
-      'Permanently deletes a tenant from the system. This is a destructive operation that requires global admin privileges.',
+      'Permanently deletes a tenant from the system. This is a destructive operation that requires admin or tenant admin privileges.',
   })
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
@@ -232,7 +227,7 @@ export class TenantController {
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'Forbidden - Global admin role required',
+    description: 'Forbidden - Admin or tenant admin role required',
   })
   @ApiParam({
     name: 'tenantId',

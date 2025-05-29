@@ -1,5 +1,23 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNotEmpty, Length } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty, Length, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+class AssetTranslationDto {
+  @ApiProperty({
+    description: 'Código de idioma de la traducción (e.g., es-ES, fr-FR).',
+    example: 'fr-FR',
+  })
+  @IsString()
+  @IsNotEmpty()
+  languageCode: string;
+
+  @ApiProperty({
+    description: 'Valor traducido del asset para esta versión y idioma.',
+  })
+  @IsString()
+  @IsNotEmpty()
+  value: string;
+}
 
 export class CreatePromptAssetVersionDto {
   // assetId (entendido como la key del PromptAsset) se eliminará de aquí,
@@ -34,6 +52,16 @@ export class CreatePromptAssetVersionDto {
   @IsString()
   @Length(2, 10)
   languageCode: string;
+
+  @ApiPropertyOptional({
+    description: 'Traducciones para esta versión del asset.',
+    type: [AssetTranslationDto],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AssetTranslationDto)
+  translations?: AssetTranslationDto[];
 
   // Las relaciones (translations, links) se manejan por separado.
 }

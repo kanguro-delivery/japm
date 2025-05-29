@@ -118,6 +118,7 @@ export class StructuredLoggerService {
         this.environment === 'development' ? 2 : 0,
       );
 
+      /*
       switch (entry.level) {
         case 'error':
           this.logger.error(
@@ -143,7 +144,9 @@ export class StructuredLoggerService {
             entry.context?.operation || 'StructuredLog',
           );
           break;
-      }
+      }      
+      this.logger.log(logMessage, entry.context?.operation || 'StructuredLog');
+      */
     } catch (error) {
       // Fallback si aún hay problemas de serialización
       const fallbackMessage = `[JSON Serialization Error] ${entry.message} - Context: ${JSON.stringify(entry.context, null, 0)}`;

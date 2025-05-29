@@ -81,6 +81,14 @@ export class PromptAssetVersionService {
           ...versionData,
           versionTag: versionTag,
           asset: { connect: { id: parentAsset.id } },
+          translations: createDto.translations ? {
+            createMany: {
+              data: createDto.translations.map(t => ({
+                languageCode: t.languageCode,
+                value: t.value
+              }))
+            }
+          } : undefined
         },
         include: {
           asset: {
@@ -88,6 +96,7 @@ export class PromptAssetVersionService {
               prompt: true,
             },
           },
+          translations: true
         },
       });
 

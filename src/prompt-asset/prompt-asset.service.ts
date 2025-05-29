@@ -55,32 +55,67 @@ export class PromptAssetService {
       throw new NotFoundException('Prompt not found');
     }
 
-    const newAsset = await this.prisma.promptAsset.create({
-      data: {
-        promptId,
-        projectId,
-        key: createDto.key,
-        enabled: true,
-      },
-      include: {
-        prompt: {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const newAsset = await tx.promptAsset.create({
+          data: {
+            promptId,
+            projectId,
+            key: createDto.key,
+            enabled: true,
+          },
           include: {
-            owner: true
+            prompt: {
+              include: {
+                owner: true
+              }
+            }
           }
+        });
+
+        // Crear la versión inicial del asset
+        const newVersion = await tx.promptAssetVersion.create({
+          data: {
+            assetId: newAsset.id,
+            value: createDto.initialValue,
+            versionTag: '1.0.0',
+            changeMessage: createDto.initialChangeMessage || 'Initial version',
+            status: 'active',
+          }
+        });
+
+        // Crear las traducciones iniciales si existen
+        if (createDto.initialTranslations && createDto.initialTranslations.length > 0) {
+          await tx.assetTranslation.createMany({
+            data: createDto.initialTranslations.map(t => ({
+              versionId: newVersion.id,
+              languageCode: t.languageCode,
+              value: t.value
+            }))
+          });
+        }
+
+        await this.activityLogService.logActivity({
+          action: ActivityAction.CREATE,
+          entityType: ActivityEntityType.PROMPT_ASSET,
+          entityId: newAsset.id,
+          userId: prompt.owner.id,
+          projectId,
+          details: `Created asset ${createDto.key} for prompt ${promptId}`,
+        });
+
+        return newAsset;
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new ConflictException(
+            `Asset with key "${createDto.key}" already exists for prompt "${promptId}" in project "${projectId}".`
+          );
         }
       }
-    });
-
-    await this.activityLogService.logActivity({
-      action: ActivityAction.CREATE,
-      entityType: ActivityEntityType.PROMPT_ASSET,
-      entityId: newAsset.id,
-      userId: prompt.owner.id,
-      projectId,
-      details: `Created asset ${createDto.key} for prompt ${promptId}`,
-    });
-
-    return newAsset;
+      throw error;
+    }
   }
 
   async update(id: string, updateDto: UpdatePromptAssetDto, projectId: string) {

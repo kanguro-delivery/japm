@@ -14,10 +14,8 @@ export class ActivityLogInterceptor implements NestInterceptor {
     ) { }
 
     private getEntityTypeFromPath(path: string): typeof ActivityEntityType[keyof typeof ActivityEntityType] | null {
-        // Normalizar el path para asegurar que las comparaciones sean consistentes
+        // Normalize path to ensure consistent comparisons
         const normalizedPath = path.toLowerCase();
-
-        this.logger.debug(`Analizando path para entityType: ${normalizedPath}`);
 
         if (normalizedPath.includes('/prompts/')) return ActivityEntityType.PROMPT;
         if (normalizedPath.includes('/prompt-versions/')) return ActivityEntityType.PROMPT_VERSION;
@@ -30,12 +28,11 @@ export class ActivityLogInterceptor implements NestInterceptor {
         if (normalizedPath.includes('/cultural-data/')) return ActivityEntityType.CULTURAL_DATA;
         if (normalizedPath.includes('/rag-documents/')) return ActivityEntityType.RAG_DOCUMENT;
 
-        this.logger.debug(`No se encontró entityType para el path: ${normalizedPath}`);
+        this.logger.debug(`No entityType found for path: ${normalizedPath}`);
         return null;
     }
 
     private getActionFromMethod(method: string): typeof ActivityAction[keyof typeof ActivityAction] | null {
-        this.logger.debug(`Analizando método para action: ${method}`);
         switch (method) {
             case 'POST':
                 return ActivityAction.CREATE;
@@ -45,7 +42,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
             case 'DELETE':
                 return ActivityAction.DELETE;
             default:
-                this.logger.debug(`No se encontró action para el método: ${method}`);
+                this.logger.debug(`No action found for method: ${method}`);
                 return null;
         }
     }
@@ -56,24 +53,16 @@ export class ActivityLogInterceptor implements NestInterceptor {
             request.query?.projectId ||
             request.headers['x-project-id'];
 
-        this.logger.debug(`Buscando projectId en request:`, {
-            bodyProjectId: request.body?.projectId,
-            paramsProjectId: request.params?.projectId,
-            queryProjectId: request.query?.projectId,
-            headerProjectId: request.headers['x-project-id'],
-            foundProjectId: projectId
-        });
-
         return projectId;
     }
 
     private getUserId(request: any): string | null {
-        // Primero intentamos obtener el ID del objeto user
+        // First try to get ID from user object
         if (request.user?.id) {
             return request.user.id;
         }
 
-        // Si no está en el objeto user, intentamos obtenerlo del token JWT
+        // If not in user object, try to get it from JWT token
         const authHeader = request.headers.authorization;
         if (authHeader && authHeader.startsWith('Bearer ')) {
             try {
@@ -83,7 +72,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
                     return decoded.sub;
                 }
             } catch (error) {
-                this.logger.warn(`Error al decodificar el token JWT: ${error.message}`);
+                this.logger.warn(`Error decoding JWT token: ${error.message}`);
             }
         }
 
@@ -93,20 +82,11 @@ export class ActivityLogInterceptor implements NestInterceptor {
     intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
         const request = context.switchToHttp().getRequest();
         const { method, path, body, params, user } = request;
-
-        this.logger.debug(`Interceptando petición:`, {
-            method,
-            path,
-            body,
-            params,
-            user: user ? { id: user.id, email: user.email } : null
-        });
-
         const entityType = this.getEntityTypeFromPath(path);
         const action = this.getActionFromMethod(method);
 
         if (!entityType || !action) {
-            this.logger.debug(`No se registrará la actividad: entityType o action no encontrados`, {
+            this.logger.debug(`Activity will not be logged: entityType or action not found`, {
                 path,
                 method,
                 entityType,
@@ -119,7 +99,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
         const projectId = this.getProjectId(request);
 
         if (!userId || !projectId) {
-            this.logger.warn(`No se pudo registrar la actividad: userId o projectId faltante`, {
+            this.logger.warn(`Could not log activity: missing userId or projectId`, {
                 userId,
                 projectId,
                 path,
@@ -139,22 +119,12 @@ export class ActivityLogInterceptor implements NestInterceptor {
                     try {
                         const entityId = response?.id || params?.aiModelId || params?.id;
                         if (!entityId) {
-                            this.logger.warn(`No se pudo obtener el entityId de la respuesta`, {
+                            this.logger.warn(`Could not get entityId from response`, {
                                 response,
                                 params,
                             });
                             return;
                         }
-
-                        this.logger.debug(`Registrando actividad:`, {
-                            action,
-                            entityType,
-                            entityId,
-                            userId,
-                            projectId,
-                            response: response ? { id: response.id } : null,
-                            params
-                        });
 
                         await this.activityLogService.logActivity({
                             action,
@@ -173,14 +143,13 @@ export class ActivityLogInterceptor implements NestInterceptor {
                             },
                         });
 
-                        this.logger.debug(`Actividad registrada exitosamente`);
                     } catch (error) {
-                        this.logger.error(`Error al registrar la actividad: ${error.message}`, error.stack);
+                        this.logger.error(`Error logging activity: ${error.message}`, error.stack);
                     }
                 },
                 error: (error) => {
-                    this.logger.error(`Error en la petición: ${error.message}`, error.stack);
-                },
+                    this.logger.error(`Error in request: ${error.message}`, error.stack);
+                }
             }),
         );
     }
