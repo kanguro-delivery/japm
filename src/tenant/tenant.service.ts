@@ -9,6 +9,7 @@ import { Tenant, Prisma, Role } from '@prisma/client';
 import { CreateTenantDto, UpdateTenantDto } from './dto';
 import { UserService } from '../user/user.service';
 import { CreateUserDto } from '../user/dto/create-user.dto';
+import { AuditLoggerService } from '../common/services/audit-logger.service';
 
 @Injectable()
 export class TenantService {
@@ -17,9 +18,13 @@ export class TenantService {
   constructor(
     private prisma: PrismaService,
     private userService: UserService,
+    private auditLogger: AuditLoggerService,
   ) {}
 
-  async create(createTenantDto: CreateTenantDto): Promise<Tenant> {
+  async create(
+    createTenantDto: CreateTenantDto,
+    adminUserId: string,
+  ): Promise<Tenant> {
     const {
       name,
       /* description, */ marketplaceRequiresApproval,
@@ -54,9 +59,21 @@ export class TenantService {
           role: Role.tenant_admin,
         };
 
-        await this.userService.create(adminUserDto, newTenant.id);
+        await this.userService.create(adminUserDto, newTenant.id, adminUserId);
         this.logger.log(
           `Initial admin user created for tenant ${newTenant.id}: ${adminUserDto.email}`,
+        );
+
+        this.auditLogger.logCreation(
+          { userId: adminUserId },
+          'TENANT',
+          newTenant.id,
+          newTenant.name,
+          {
+            name: newTenant.name,
+            marketplaceRequiresApproval: newTenant.marketplaceRequiresApproval,
+            initialAdminEmail: adminUserDto.email,
+          },
         );
 
         return newTenant;
@@ -100,7 +117,11 @@ export class TenantService {
     return tenant;
   }
 
-  async update(id: string, updateTenantDto: UpdateTenantDto): Promise<Tenant> {
+  async update(
+    id: string,
+    updateTenantDto: UpdateTenantDto,
+    adminUserId: string,
+  ): Promise<Tenant> {
     const { name, /* description, */ marketplaceRequiresApproval } =
       updateTenantDto;
     this.logger.log(
@@ -122,7 +143,7 @@ export class TenantService {
     }
 
     try {
-      return await this.prisma.tenant.update({
+      const updatedTenant = await this.prisma.tenant.update({
         where: { id },
         data: {
           name,
@@ -130,6 +151,26 @@ export class TenantService {
           marketplaceRequiresApproval,
         },
       });
+
+      this.auditLogger.logUpdate(
+        { userId: adminUserId },
+        'TENANT',
+        id,
+        updatedTenant.name,
+        {
+          name: existingTenant.name,
+          marketplaceRequiresApproval:
+            existingTenant.marketplaceRequiresApproval,
+        },
+        {
+          name: updatedTenant.name,
+          marketplaceRequiresApproval:
+            updatedTenant.marketplaceRequiresApproval,
+        },
+        Object.keys(updateTenantDto),
+      );
+
+      return updatedTenant;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -152,15 +193,28 @@ export class TenantService {
     }
   }
 
-  async remove(id: string): Promise<Tenant> {
+  async remove(id: string, adminUserId: string): Promise<Tenant> {
     this.logger.log(`Attempting to remove tenant with ID: ${id}`);
-    await this.findOne(id);
+    const existingTenant = await this.findOne(id);
 
     try {
       const deletedTenant = await this.prisma.tenant.delete({
         where: { id },
       });
       this.logger.log(`Tenant removed: ${deletedTenant.name} (ID: ${id})`);
+
+      this.auditLogger.logDeletion(
+        { userId: adminUserId },
+        'TENANT',
+        id,
+        existingTenant.name,
+        {
+          name: existingTenant.name,
+          marketplaceRequiresApproval:
+            existingTenant.marketplaceRequiresApproval,
+        },
+      );
+
       return deletedTenant;
     } catch (error) {
       this.logger.error(

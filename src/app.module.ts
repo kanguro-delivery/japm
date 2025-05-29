@@ -1,4 +1,4 @@
-import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -30,8 +30,12 @@ import { SystemPromptModule } from './system-prompt/system-prompt.module';
 import { RawExecutionModule } from './raw-execution/raw-execution.module';
 import { TenantModule } from './tenant/tenant.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
+import { ActivityLogModule } from './services/activity-log.module';
+import { ActivityEntityType } from '@prisma/client';
+import { ActivityLogService } from './services/activityLogService';
 
 @Module({
   imports: [
@@ -45,9 +49,13 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const isDevelopment = configService.get('NODE_ENV') === 'development';
-        const throttleEnabled = configService.get('THROTTLE_ENABLED') !== 'false';
+        const throttleEnabled =
+          configService.get('THROTTLE_ENABLED') !== 'false';
 
-        if (!throttleEnabled || (isDevelopment && !configService.get('THROTTLE_FORCE_IN_DEV'))) {
+        if (
+          !throttleEnabled ||
+          (isDevelopment && !configService.get('THROTTLE_FORCE_IN_DEV'))
+        ) {
           return [
             {
               name: 'default',
@@ -65,7 +73,8 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
           },
           {
             name: 'auth',
-            ttl: parseInt(configService.get('THROTTLE_AUTH_TTL') || '900') * 1000,
+            ttl:
+              parseInt(configService.get('THROTTLE_AUTH_TTL') || '900') * 1000,
             limit: parseInt(configService.get('THROTTLE_AUTH_LIMIT') || '20'),
           },
           {
@@ -75,8 +84,12 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
           },
           {
             name: 'creation',
-            ttl: parseInt(configService.get('THROTTLE_CREATION_TTL') || '60') * 1000,
-            limit: parseInt(configService.get('THROTTLE_CREATION_LIMIT') || '100'),
+            ttl:
+              parseInt(configService.get('THROTTLE_CREATION_TTL') || '60') *
+              1000,
+            limit: parseInt(
+              configService.get('THROTTLE_CREATION_LIMIT') || '100',
+            ),
           },
         ];
       },
@@ -106,10 +119,13 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     RawExecutionModule,
     TenantModule,
     MarketplaceModule,
+    DashboardModule,
+    ActivityLogModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    ActivityLogService,
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor,
@@ -121,10 +137,9 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
   ],
 })
 export class AppModule implements NestModule {
+  constructor(private readonly activityLogService: ActivityLogService) { }
+
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(StructuredLoggerMiddleware).forRoutes('*');
-
-    // Optionally, you can also keep the original one for comparison during development
-    // consumer.apply(LoggerMiddleware).forRoutes('*');
   }
 }

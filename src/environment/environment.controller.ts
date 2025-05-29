@@ -49,7 +49,7 @@ export class EnvironmentController {
   constructor(
     private readonly service: EnvironmentService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) { }
+  ) {}
 
   // Helper function to get the cache key for the findAll endpoint
   private getFindAllCacheKey(projectId: string): string {

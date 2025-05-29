@@ -71,17 +71,19 @@ export class UserController {
   create(@Request() req, @Body() createUserDto: CreateUserDto): Promise<User> {
     this.logger.debug(
       `[create] Received POST request. Body: ${JSON.stringify(createUserDto, null, 2)}`,
-    ); // Log the received DTO (Consider masking password)
-    const tenantId = req.user?.tenantId; // <-- Obtener tenantId del admin
-    if (!tenantId) {
+    );
+    const tenantId = req.user?.tenantId;
+    const adminUserId = req.user?.id;
+
+    if (!tenantId || !adminUserId) {
       this.logger.error(
-        'Tenant ID not found in authenticated admin user request for user creation',
+        'Tenant ID or Admin User ID not found in authenticated admin user request for user creation',
       );
       throw new UnauthorizedException(
-        'Admin user tenant information is missing',
+        'Admin user information is missing',
       );
     }
-    return this.userService.create(createUserDto, tenantId); // <-- Pasar tenantId al servicio
+    return this.userService.create(createUserDto, tenantId, adminUserId);
   }
 
   @Get()
@@ -185,13 +187,25 @@ export class UserController {
     description: 'User not found - The specified ID does not exist',
   })
   update(
+    @Request() req,
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<User> {
     this.logger.debug(
       `[update] Received PATCH for userId: ${id}. Body: ${JSON.stringify(updateUserDto, null, 2)}`,
-    ); // Log the received DTO (Consider masking password if present)
-    return this.userService.update(id, updateUserDto);
+    );
+    const tenantId = req.user?.tenantId;
+    const adminUserId = req.user?.id;
+
+    if (!tenantId || !adminUserId) {
+      this.logger.error(
+        'Tenant ID or Admin User ID not found in authenticated admin user request for user update',
+      );
+      throw new UnauthorizedException(
+        'Admin user information is missing',
+      );
+    }
+    return this.userService.update(id, updateUserDto, adminUserId, tenantId);
   }
 
   @Delete(':id')
@@ -223,7 +237,18 @@ export class UserController {
     status: 404,
     description: 'User not found - The specified ID does not exist',
   })
-  remove(@Param('id') id: string): Promise<User> {
-    return this.userService.remove(id);
+  remove(@Request() req, @Param('id') id: string): Promise<User> {
+    const tenantId = req.user?.tenantId;
+    const adminUserId = req.user?.id;
+
+    if (!tenantId || !adminUserId) {
+      this.logger.error(
+        'Tenant ID or Admin User ID not found in authenticated admin user request for user deletion',
+      );
+      throw new UnauthorizedException(
+        'Admin user information is missing',
+      );
+    }
+    return this.userService.remove(id, adminUserId, tenantId);
   }
 }

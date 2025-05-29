@@ -7,14 +7,20 @@ import { CreateRegionDto } from './dto/create-region.dto';
 import { UpdateRegionDto } from './dto/update-region.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, Region } from '@prisma/client';
+import { AuditLoggerService } from '../common/services/audit-logger.service';
 
 @Injectable()
 export class RegionService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private auditLogger: AuditLoggerService,
+  ) {}
 
   async create(
     createRegionDto: CreateRegionDto,
     projectId: string,
+    userId: string,
+    tenantId: string,
   ): Promise<Region> {
     const { parentRegionId, languageCode, ...restData } = createRegionDto;
 
@@ -45,10 +51,20 @@ export class RegionService {
     };
 
     try {
-      return await this.prisma.region.create({
+      const region = await this.prisma.region.create({
         data,
         include: { culturalData: true, parentRegion: true },
       });
+
+      this.auditLogger.logCreation(
+        { userId, tenantId, projectId },
+        'REGION',
+        region.id,
+        languageCode,
+        { languageCode, parentRegionId, ...restData },
+      );
+
+      return region;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -106,9 +122,15 @@ export class RegionService {
     languageCode: string,
     updateRegionDto: UpdateRegionDto,
     projectId: string,
+    userId: string,
+    tenantId: string,
   ): Promise<Region> {
     const regionToUpdate = await this.findOne(languageCode, projectId);
-    const { parentRegionId, tenantId, ...restData } = updateRegionDto as any; // Omitir tenantId si viene
+    const {
+      parentRegionId,
+      tenantId: _omitTenantId,
+      ...restData
+    } = updateRegionDto as any; // Omitir tenantId si viene
     let parentRegionUpdate:
       | Prisma.RegionUpdateOneWithoutFrom_Region_parentRegionNestedInput
       | undefined = undefined;
@@ -135,11 +157,23 @@ export class RegionService {
       parentRegion: parentRegionUpdate,
     };
     try {
-      return await this.prisma.region.update({
+      const updatedRegion = await this.prisma.region.update({
         where: { id: regionToUpdate.id },
         data,
         include: { culturalData: true, parentRegion: true },
       });
+
+      this.auditLogger.logUpdate(
+        { userId, tenantId, projectId },
+        'REGION',
+        updatedRegion.id,
+        languageCode,
+        { ...regionToUpdate },
+        { ...updatedRegion },
+        Object.keys(restData),
+      );
+
+      return updatedRegion;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -159,7 +193,12 @@ export class RegionService {
     }
   }
 
-  async remove(languageCode: string, projectId: string): Promise<Region> {
+  async remove(
+    languageCode: string,
+    projectId: string,
+    userId: string,
+    tenantId: string,
+  ): Promise<Region> {
     return this.prisma.$transaction(async (tx) => {
       // Encontrar la región por su projectId y languageCode para obtener su CUID id
       const regionFound = await tx.region.findUnique({
@@ -173,6 +212,12 @@ export class RegionService {
         );
       }
 
+      // Obtener los datos completos de la región para el log de auditoría
+      const regionToDelete = await tx.region.findUnique({
+        where: { id: regionFound.id },
+        include: { culturalData: true, parentRegion: true },
+      });
+
       // Eliminar CulturalData asociada usando el CUID id de la región
       // Nota: CulturalData.regionId ahora se refiere al CUID de Region
       await tx.culturalData.deleteMany({
@@ -183,6 +228,15 @@ export class RegionService {
       const deletedRegion = await tx.region.delete({
         where: { id: regionFound.id },
       });
+
+      this.auditLogger.logDeletion(
+        { userId, tenantId, projectId },
+        'REGION',
+        deletedRegion.id,
+        languageCode,
+        { ...regionToDelete },
+      );
+
       return deletedRegion;
     });
   }

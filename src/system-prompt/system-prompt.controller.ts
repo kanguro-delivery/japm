@@ -35,7 +35,7 @@ import { Role } from '../auth/enums/role.enum';
 export class SystemPromptController {
   private readonly logger = new Logger(SystemPromptController.name);
 
-  constructor(private readonly service: SystemPromptService) { }
+  constructor(private readonly service: SystemPromptService) {}
 
   // --- Create --- //
   @Post()

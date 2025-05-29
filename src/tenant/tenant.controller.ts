@@ -12,6 +12,7 @@ import {
   ForbiddenException,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { TenantService } from './tenant.service';
 import { CreateTenantDto, UpdateTenantDto, TenantDto } from './dto';
@@ -26,12 +27,18 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard'; // Asumiendo que existe
 import { Roles } from '../auth/decorators/roles.decorator'; // Asumiendo que existe
 import { Role } from '../auth/enums/role.enum';
+import { Request } from 'express';
+import { User } from '@prisma/client';
+
+interface RequestWithUser extends Request {
+  user?: User;
+}
 
 @ApiTags('Tenants')
 @ApiBearerAuth()
 @Controller('tenants')
 export class TenantController {
-  constructor(private readonly tenantService: TenantService) {}
+  constructor(private readonly tenantService: TenantService) { }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -63,8 +70,14 @@ export class TenantController {
     status: HttpStatus.FORBIDDEN,
     description: 'Forbidden - Global admin role required',
   })
-  create(@Body() createTenantDto: CreateTenantDto): Promise<TenantDto> {
-    return this.tenantService.create(createTenantDto);
+  create(
+    @Body() createTenantDto: CreateTenantDto,
+    @Req() req: RequestWithUser
+  ): Promise<TenantDto> {
+    if (!req.user) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+    return this.tenantService.create(createTenantDto, req.user.id);
   }
 
   @Get()
@@ -126,8 +139,11 @@ export class TenantController {
   })
   async findOne(
     @Param('tenantId') tenantId: string,
-    @Req() req: any,
+    @Req() req: RequestWithUser,
   ): Promise<TenantDto> {
+    if (!req.user) {
+      throw new UnauthorizedException('User not authenticated');
+    }
     if (req.user.role === Role.TENANT_ADMIN && req.user.tenantId !== tenantId) {
       throw new ForbiddenException(
         'You are not authorized to access this tenant.',
@@ -180,14 +196,17 @@ export class TenantController {
   async update(
     @Param('tenantId') tenantId: string,
     @Body() updateTenantDto: UpdateTenantDto,
-    @Req() req: any,
+    @Req() req: RequestWithUser,
   ): Promise<TenantDto> {
+    if (!req.user) {
+      throw new UnauthorizedException('User not authenticated');
+    }
     if (req.user.role === Role.TENANT_ADMIN && req.user.tenantId !== tenantId) {
       throw new ForbiddenException(
         'You are not authorized to update this tenant.',
       );
     }
-    return this.tenantService.update(tenantId, updateTenantDto);
+    return this.tenantService.update(tenantId, updateTenantDto, req.user.id);
   }
 
   @Delete(':tenantId')
@@ -222,7 +241,13 @@ export class TenantController {
     description: 'Unique tenant identifier to delete (UUID)',
     required: true,
   })
-  async remove(@Param('tenantId') tenantId: string): Promise<void> {
-    await this.tenantService.remove(tenantId);
+  async remove(
+    @Param('tenantId') tenantId: string,
+    @Req() req: RequestWithUser,
+  ): Promise<void> {
+    if (!req.user) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+    await this.tenantService.remove(tenantId, req.user.id);
   }
 }

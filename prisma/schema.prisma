@@ -39,15 +39,41 @@ enum Role {
 }
 
 enum PromptType {
-  SYSTEM      // Instrucciones base del modelo
-  USER        // Entrada del usuario
-  ASSISTANT   // Respuesta del asistente
-  GUARD       // Reglas de seguridad y validación
-  COMPOSITE   // Prompt compuesto por otros prompts
-  CONTEXT     // Información contextual
-  FUNCTION    // Definición de funciones/capacidades
-  EXAMPLE     // Ejemplos de uso
-  TEMPLATE    // Plantillas reutilizables
+  SYSTEM      // Base model instructions
+  USER        // User input
+  ASSISTANT   // Assistant's response
+  GUARD       // Security and validation rules
+  COMPOSITE   // Prompt composed of other prompts
+  CONTEXT     // Contextual information
+  FUNCTION    // Function/capability definition
+  EXAMPLE     // Usage examples
+  TEMPLATE    // Reusable templates
+}
+
+enum ActivityAction {
+  CREATE
+  UPDATE
+  DELETE
+  PUBLISH
+  UNPUBLISH
+  APPROVE
+  REJECT
+}
+
+enum ActivityEntityType {
+  PROMPT
+  PROMPT_VERSION
+  PROMPT_TRANSLATION
+  PROMPT_ASSET
+  PROMPT_ASSET_VERSION
+  ASSET_TRANSLATION
+  PROJECT
+  ENVIRONMENT
+  AI_MODEL
+  TAG
+  REGION
+  CULTURAL_DATA
+  RAG_DOCUMENT
 }
 
 // MODELS (alphabetical order)
@@ -65,6 +91,8 @@ model User {
 
   projects            Project[]            @relation("OwnedProjects")
   promptExecutionLogs PromptExecutionLog[] // Relación inversa añadida
+  activityLogs        ActivityLog[]        // Nueva relación
+  ownedPrompts        Prompt[]            @relation("OwnedPrompts")
 
   // Marketplace relations
   authoredMarketplacePromptRequests PromptVersion[] @relation("AuthoredMarketplacePromptRequests")
@@ -127,6 +155,8 @@ model Prompt {
   project     Project  @relation("ProjectPrompts", fields: [projectId], references: [id])
   tenantId    String
   tenant      Tenant   @relation("TenantPrompts", fields: [tenantId], references: [id])
+  ownerUserId String
+  owner       User     @relation("OwnedPrompts", fields: [ownerUserId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -135,6 +165,7 @@ model Prompt {
   assets      PromptAsset[]   @relation("PromptOwnedAssets")
 
   @@unique([id, projectId], name: "prompt_id_project_unique")
+  @@index([ownerUserId])
   @@map("prompts")
 }
 
@@ -310,6 +341,7 @@ model Project {
   ragDocs             RagDocumentMetadata[] @relation("ProjectRagDocs")
   tags                Tag[]                 @relation("ProjectTags")
   promptExecutionLogs PromptExecutionLog[]  @relation("ProjectLogs")
+  activityLogs        ActivityLog[]         // Nueva relación
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -425,4 +457,26 @@ model Asset {
   updatedAt   DateTime @updatedAt
 
   @@map("assets")
+}
+
+model ActivityLog {
+  id          String           @id @default(cuid())
+  timestamp   DateTime         @default(now())
+  action      ActivityAction
+  entityType  ActivityEntityType
+  entityId    String
+  userId      String
+  user        User             @relation(fields: [userId], references: [id])
+  projectId   String
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  details     String?          @db.Text
+  changes     String?          @db.Text
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([timestamp])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([userId])
+  @@index([projectId])
 }

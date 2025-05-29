@@ -10,15 +10,21 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateAiModelDto, CreateAiModelData } from './dto/create-ai-model.dto';
 import { UpdateAiModelDto, UpdateAiModelData } from './dto/update-ai-model.dto';
 import { AIModel, Prisma } from '@prisma/client';
+import { AuditLoggerService } from '../common/services/audit-logger.service';
 
 @Injectable()
 export class AiModelService {
   private readonly logger = new Logger(AiModelService.name);
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private auditLogger: AuditLoggerService,
+  ) {}
 
   async create(
     projectId: string,
     createAiModelDto: CreateAiModelDto,
+    userId: string,
+    tenantId: string,
   ): Promise<AIModel> {
     this.logger.log(
       `Attempting to create AIModel "${createAiModelDto.name}" for project: ${projectId}`,
@@ -36,6 +42,15 @@ export class AiModelService {
       this.logger.log(
         `Successfully created AIModel ${newModel.id} ("${newModel.name}") for project ${projectId}`,
       );
+
+      this.auditLogger.logCreation(
+        { userId, tenantId, projectId },
+        'AI_MODEL',
+        newModel.id,
+        newModel.name,
+        { ...dataToCreate, projectId },
+      );
+
       return newModel;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -105,11 +120,13 @@ export class AiModelService {
     projectId: string,
     aiModelId: string,
     updateAiModelDto: UpdateAiModelDto,
+    userId: string,
+    tenantId: string,
   ): Promise<AIModel> {
     this.logger.log(
       `Attempting to update AIModel ${aiModelId} for project ${projectId}`,
     );
-    await this.findOne(projectId, aiModelId);
+    const existingModel = await this.findOne(projectId, aiModelId);
 
     // Use the DTO directly. Prisma should ignore fields not in the model.
     // If Prisma errors occur due to extra fields like tenantId (sent by frontend?),
@@ -125,6 +142,17 @@ export class AiModelService {
       this.logger.log(
         `Successfully updated AIModel ${aiModelId} for project ${projectId}`,
       );
+
+      this.auditLogger.logUpdate(
+        { userId, tenantId, projectId },
+        'AI_MODEL',
+        aiModelId,
+        updatedModel.name,
+        { ...existingModel },
+        { ...updatedModel },
+        Object.keys(dataToUpdate),
+      );
+
       return updatedModel;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -153,11 +181,16 @@ export class AiModelService {
     }
   }
 
-  async remove(projectId: string, aiModelId: string): Promise<AIModel> {
+  async remove(
+    projectId: string,
+    aiModelId: string,
+    userId: string,
+    tenantId: string,
+  ): Promise<AIModel> {
     this.logger.log(
       `Attempting to delete AIModel ${aiModelId} for project ${projectId}`,
     );
-    await this.findOne(projectId, aiModelId);
+    const existingModel = await this.findOne(projectId, aiModelId);
 
     try {
       const deletedModel = await this.prisma.aIModel.delete({
@@ -166,6 +199,15 @@ export class AiModelService {
       this.logger.log(
         `Successfully deleted AIModel ${aiModelId} for project ${projectId}`,
       );
+
+      this.auditLogger.logDeletion(
+        { userId, tenantId, projectId },
+        'AI_MODEL',
+        aiModelId,
+        existingModel.name,
+        { ...existingModel },
+      );
+
       return deletedModel;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {

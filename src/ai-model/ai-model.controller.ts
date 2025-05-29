@@ -10,6 +10,8 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Req,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CacheInterceptor } from '@nestjs/cache-manager';
 import { AiModelService } from './ai-model.service';
@@ -22,11 +24,16 @@ import {
   ApiParam,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { AIModel } from '@prisma/client';
+import { AIModel, User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // Assuming you have JWT auth
 import { ProjectGuard } from '../common/guards/project.guard'; // Assuming you have this guard
 import { AiModelResponseDto } from './dto/ai-model-response.dto';
 import { Logger } from '@nestjs/common'; // Import Logger
+import { Request } from 'express';
+
+interface RequestWithUser extends Request {
+  user?: User;
+}
 
 @ApiTags('AI Models (Project Specific)')
 @ApiBearerAuth() // Add if endpoints require authentication
@@ -35,7 +42,7 @@ import { Logger } from '@nestjs/common'; // Import Logger
 export class AiModelController {
   private readonly logger = new Logger(AiModelController.name); // Add Logger instance
 
-  constructor(private readonly aiModelService: AiModelService) {}
+  constructor(private readonly aiModelService: AiModelService) { }
 
   @Post()
   @ApiOperation({ summary: 'Create a new AI model for this project' })
@@ -52,11 +59,15 @@ export class AiModelController {
   create(
     @Param('projectId') projectId: string,
     @Body() createAiModelDto: CreateAiModelDto,
+    @Req() req: RequestWithUser
   ): Promise<AIModel> {
+    if (!req.user) {
+      throw new UnauthorizedException('User not authenticated');
+    }
     this.logger.debug(
       `[create] Received request for projectId: ${projectId}. Body: ${JSON.stringify(createAiModelDto, null, 2)}`,
-    ); // Log the received DTO
-    return this.aiModelService.create(projectId, createAiModelDto);
+    );
+    return this.aiModelService.create(projectId, createAiModelDto, req.user.id, req.user.tenantId);
   }
 
   @Get()
@@ -117,11 +128,15 @@ export class AiModelController {
     @Param('projectId') projectId: string,
     @Param('aiModelId') aiModelId: string,
     @Body() updateAiModelDto: UpdateAiModelDto,
+    @Req() req: RequestWithUser
   ): Promise<AIModel> {
+    if (!req.user) {
+      throw new UnauthorizedException('User not authenticated');
+    }
     this.logger.debug(
       `[update] Received PATCH for projectId: ${projectId}, aiModelId: ${aiModelId}. Body: ${JSON.stringify(updateAiModelDto, null, 2)}`,
-    ); // Log the received DTO
-    return this.aiModelService.update(projectId, aiModelId, updateAiModelDto);
+    );
+    return this.aiModelService.update(projectId, aiModelId, updateAiModelDto, req.user.id, req.user.tenantId);
   }
 
   @Delete(':aiModelId') // Changed param name
@@ -139,8 +154,12 @@ export class AiModelController {
   remove(
     @Param('projectId') projectId: string,
     @Param('aiModelId') aiModelId: string,
+    @Req() req: RequestWithUser
   ): Promise<AIModel> {
-    return this.aiModelService.remove(projectId, aiModelId);
+    if (!req.user) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+    return this.aiModelService.remove(projectId, aiModelId, req.user.id, req.user.tenantId);
   }
 
   @Get('providers/types')
@@ -158,9 +177,9 @@ export class AiModelController {
     description: 'A list of Langchain provider types.',
     type: [String],
   })
-  getProviderTypes(): string[] {
+  getProviderTypes(@Param('projectId') projectId: string): string[] {
     this.logger.debug(
-      '[getProviderTypes] Received request for Langchain provider types',
+      `[getProviderTypes] Received request for Langchain provider types for project ${projectId}`,
     );
     return this.aiModelService.getProviderTypes();
   }

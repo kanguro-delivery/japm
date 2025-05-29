@@ -6,8 +6,10 @@ import {
   ValidateNested,
   IsOptional,
   IsObject,
+  IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { PromptType } from '@prisma/client';
 
 export class PromptMetaDto {
   @ApiProperty({
@@ -26,6 +28,22 @@ export class PromptMetaDto {
   @IsNotEmpty()
   @IsString()
   description: string;
+
+  @ApiProperty({
+    description: 'ID of the user who owns this prompt.',
+    example: 'user-123',
+  })
+  @IsNotEmpty()
+  @IsString()
+  ownerUserId: string;
+
+  @ApiProperty({
+    description: 'Type of the prompt.',
+    enum: PromptType,
+    example: PromptType.USER,
+  })
+  @IsEnum(PromptType)
+  type: PromptType;
 }
 
 export class PromptVersionTranslationDto {
@@ -85,67 +103,48 @@ export class PromptVersionStructureDto {
   translations: PromptVersionTranslationDto[];
 }
 
-export class AssetTranslationStructureDto {
-  @ApiProperty({
-    description: 'Language code for the asset value translation.',
-    example: 'en-US',
-  })
-  @IsNotEmpty()
-  @IsString()
-  languageCode: string;
-
-  @ApiProperty({
-    description: 'Translated value of the asset.',
-    example: 'Invoice Number',
-  })
-  @IsNotEmpty()
-  @IsString()
-  value: string;
-}
-
 export class PromptAssetStructureDto {
   @ApiProperty({
-    description:
-      'Unique key for the asset in slug-case format. This key is used in {{placeholders}}.',
-    example: 'invoice-number-field',
+    description: 'Key (slug-case) for the asset.',
+    example: 'invoice_number_field',
   })
   @IsNotEmpty()
   @IsString()
-  // Aquí podríamos añadir @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/) si queremos validar el formato slug-case
   key: string;
 
   @ApiProperty({
-    description: 'Descriptive name for the asset.',
+    description: 'Name of the asset.',
     example: 'Invoice Number Field',
   })
   @IsNotEmpty()
   @IsString()
-  name: string; // Nombre descriptivo del asset, como se discutió
+  name: string;
 
   @ApiProperty({
-    description: 'The original extracted value for the asset.',
-    example: 'invoice number',
+    description: 'Value of the asset.',
+    example: 'invoice_number',
   })
   @IsNotEmpty()
   @IsString()
-  value: string; // Valor base/inicial del asset
+  value: string;
 
   @ApiProperty({
     description: 'Change message for this asset version.',
-    example: 'Initial asset version from user prompt.',
+    example: 'Initial version from loaded structure.',
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  changeMessage: string;
+  changeMessage?: string;
 
   @ApiProperty({
-    type: [AssetTranslationStructureDto],
+    type: [PromptVersionTranslationDto],
     description: 'Translations for the asset value.',
   })
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => AssetTranslationStructureDto)
-  translations: AssetTranslationStructureDto[];
+  @Type(() => PromptVersionTranslationDto)
+  translations?: PromptVersionTranslationDto[];
 }
 
 export class LoadPromptStructureDto {

@@ -24,7 +24,7 @@ export class ProjectGuard implements CanActivate {
   constructor(
     private prisma: PrismaService,
     private reflector: Reflector,
-  ) { } // Inject Reflector
+  ) {} // Inject Reflector
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -41,7 +41,7 @@ export class ProjectGuard implements CanActivate {
 
     if (!user || !user.tenantId) {
       this.logger.warn(
-        `[ProjectGuard] DENIED: User or user.tenantId is undefined. User: ${JSON.stringify(user)}`
+        `[ProjectGuard] DENIED: User or user.tenantId is undefined. User: ${JSON.stringify(user)}`,
       );
       throw new ForbiddenException(
         'User does not have permission to access this project (missing tenantId)',
@@ -51,7 +51,7 @@ export class ProjectGuard implements CanActivate {
     // 2. Validate projectId presence and basic format
     if (!projectId) {
       this.logger.warn(
-        `[ProjectGuard] DENIED: Project ID missing (expected param: ${projectIdParamName}).`
+        `[ProjectGuard] DENIED: Project ID missing (expected param: ${projectIdParamName}).`,
       );
       throw new BadRequestException(
         `Project ID parameter (expected: ${projectIdParamName}) is missing in URL`,
@@ -59,7 +59,7 @@ export class ProjectGuard implements CanActivate {
     }
     if (typeof projectId !== 'string' || projectId.trim() === '') {
       this.logger.warn(
-        `[ProjectGuard] Invalid Project ID format received (param: ${projectIdParamName}): ${projectId}`
+        `[ProjectGuard] Invalid Project ID format received (param: ${projectIdParamName}): ${projectId}`,
       );
       throw new BadRequestException('Invalid Project ID format');
     }
@@ -74,17 +74,15 @@ export class ProjectGuard implements CanActivate {
       // 4. Check if project exists
       if (!project) {
         this.logger.warn(
-          `[ProjectGuard] DENIED: Project with ID "${projectId}" not found in DB.`
+          `[ProjectGuard] DENIED: Project with ID "${projectId}" not found in DB.`,
         );
-        throw new NotFoundException(
-          `Project with ID "${projectId}" not found`,
-        );
+        throw new NotFoundException(`Project with ID "${projectId}" not found`);
       }
 
       // 5. Check if the authenticated user owns the project (using tenantId)
       if (project.tenantId !== user.tenantId) {
         this.logger.warn(
-          `[ProjectGuard] DENIED: Tenant mismatch. Project Tenant: "${project.tenantId}", User Tenant: "${user.tenantId}"`
+          `[ProjectGuard] DENIED: Tenant mismatch. Project Tenant: "${project.tenantId}", User Tenant: "${user.tenantId}"`,
         );
         throw new ForbiddenException(
           'User does not have permission to access this project (tenant mismatch)',
@@ -97,13 +95,13 @@ export class ProjectGuard implements CanActivate {
       request.validatedProjectId = projectId; // A new, consistently named property
 
       this.logger.log(
-        `[ProjectGuard] GRANTED for User ID: "${user.userId}", TenantID: "${user.tenantId}" to Project: "${project.name}" (ID: "${projectId}")`
+        `[ProjectGuard] GRANTED for User ID: "${user.userId}", TenantID: "${user.tenantId}" to Project: "${project.name}" (ID: "${projectId}")`,
       );
       return true;
     } catch (error) {
       this.logger.error(
         `[ProjectGuard] EXCEPTION during project validation: ${error.message}`,
-        error.stack
+        error.stack,
       );
       // Log before re-throwing known exceptions
       if (
@@ -118,7 +116,7 @@ export class ProjectGuard implements CanActivate {
       // Log unexpected errors
       this.logger.error(
         `[ProjectGuard] Unexpected error in ProjectGuard for projectId ${projectId} (param: ${projectIdParamName}) and userId ${user.userId}:`,
-        error.stack || error
+        error.stack || error,
       ); // Use user.userId in log
       // Throw a generic internal server error
       throw new InternalServerErrorException(

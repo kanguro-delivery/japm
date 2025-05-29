@@ -31,10 +31,14 @@ import { ExecuteRawDto } from '../raw-execution/dto/execute-raw.dto';
 import { LoadPromptStructureDto } from './dto/load-prompt-structure.dto';
 import { AuditLoggerService } from '../common/services/audit-logger.service';
 import { LogContext } from '../common/services/structured-logger.service';
-import { PromptBackupService, PromptBackupOptions } from '../common/services/prompt-backup.service';
+import {
+  PromptBackupService,
+  PromptBackupOptions,
+} from '../common/services/prompt-backup.service';
 import { TenantService } from '../tenant/tenant.service';
 import { TagService } from '../tag/tag.service';
 import { EnvironmentService } from '../environment/environment.service';
+import { ActivityLogService, ActivityAction, ActivityEntityType } from '../services/activityLogService';
 
 // Asumiendo que tenemos acceso a la función slugify (igual que en ProjectService)
 function slugify(text: string): string {
@@ -54,16 +58,6 @@ type PromptWithRelations = Prisma.PromptGetPayload<{
     versions: {
       include: {
         translations: true;
-        assets: {
-          include: {
-            assetVersion: {
-              include: {
-                asset: { select: { key: true; name: true } };
-                translations: true;
-              };
-            };
-          };
-        };
         activeInEnvironments: { select: { id: true; name: true } };
       };
       orderBy: { createdAt: 'desc' };
@@ -98,6 +92,7 @@ export class PromptService {
     private rawExecutionService: RawExecutionService,
     private auditLogger: AuditLoggerService,
     private promptBackupService: PromptBackupService,
+    private activityLogService: ActivityLogService,
   ) { }
 
   // Helper to substitute variables (copied from RawExecutionService for now)
@@ -117,33 +112,20 @@ export class PromptService {
     createDto: CreatePromptDto,
     projectId: string,
     tenantId: string,
+    ownerUserId: string,
   ): Promise<PromptWithInitialVersionAndTags> {
-    // Debug logging para verificar los valores después de la transformación
-    this.logger.debug(`🐞 CreatePromptDto recibido:`, {
-      createDto,
-      type: typeof createDto.type,
-      typeValue: createDto.type,
-    });
-
     const {
       name,
       description,
       promptText,
       languageCode,
       initialTranslations,
-      tags: tagNames,
+      tags,
       type,
       ...restData
     } = createDto;
 
-    const slugifiedName = slugify(name); // Slugify the name received from DTO
-
-    // Debug logging para verificar el valor extraído de type
-    this.logger.debug(`🐞 Valor de type después de destructuring:`, {
-      type,
-      typeOf: typeof type,
-      restData,
-    });
+    const slugifiedName = slugify(name);
 
     // Verificar que el proyecto existe
     const project = await this.prisma.project.findUnique({
@@ -162,14 +144,14 @@ export class PromptService {
     }
 
     let tagsToConnect: Prisma.TagWhereUniqueInput[] | undefined = undefined;
-    if (tagNames && tagNames.length > 0) {
+    if (tags && tags.length > 0) {
       const existingTags = await this.prisma.tag.findMany({
-        where: { name: { in: tagNames }, projectId: projectId },
+        where: { name: { in: tags }, projectId: projectId },
         select: { id: true, name: true },
       });
-      if (existingTags.length !== tagNames.length) {
+      if (existingTags.length !== tags.length) {
         const foundTagNames = new Set(existingTags.map((t) => t.name));
-        const missingTags = tagNames.filter((t) => !foundTagNames.has(t));
+        const missingTags = tags.filter((t) => !foundTagNames.has(t));
         throw new NotFoundException(
           `Tags not found in project '${projectId}': ${missingTags.join(', ')}`,
         );
@@ -181,15 +163,16 @@ export class PromptService {
       await this.prisma.$transaction(async (tx) => {
         await tx.prompt.create({
           data: {
-            id: slugifiedName, // Use the slugified name as the ID
-            name: name, // Store the original name in the name field
+            id: slugifiedName,
+            name: name,
             description: description,
             type: type,
             projectId: projectId,
             tenantId: tenantId,
+            ownerUserId: ownerUserId,
             tags: tagsToConnect ? { connect: tagsToConnect } : undefined,
             ...restData,
-          },
+          } as any,
         });
 
         await tx.promptVersion.create({
@@ -230,24 +213,39 @@ export class PromptService {
         },
       });
 
-      return createdPrompt as PromptWithInitialVersionAndTags;
+      // Registrar la actividad
+      await this.activityLogService.logActivity({
+        action: ActivityAction.CREATE,
+        entityType: ActivityEntityType.PROMPT,
+        entityId: createdPrompt.id,
+        userId: ownerUserId,
+        projectId: projectId,
+        details: {
+          name: createdPrompt.name,
+          type: createdPrompt.type,
+          versionTag: '1.0.0',
+        },
+      });
+
+      return createdPrompt;
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new ConflictException(
-          `Prompt with ID (slug) "${slugifiedName}" already exists in project "${projectId}".`
-        );
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new ConflictException(
+            `A prompt with this name already exists in project '${projectId}'.`,
+          );
+        }
       }
-      this.logger.error(`Error creating prompt with name "${name}" (potential slug "${slugifiedName}") in project "${projectId}":`, error);
-      throw error; // Re-throw el error original si no es uno de los manejados específicamente arriba
+      throw error;
     }
   }
 
-  findAll(projectId: string): Promise<Prompt[]> {
+  findAll(projectId: string, tenantId: string): Promise<Prompt[]> {
     return this.prisma.prompt.findMany({
-      where: { projectId },
+      where: {
+        projectId,
+        tenantId
+      },
       include: {
         tags: { select: { name: true } },
         versions: {
@@ -261,6 +259,7 @@ export class PromptService {
   async findOne(
     promptIdSlug: string,
     projectId: string,
+    tenantId: string,
   ): Promise<PromptWithRelations> {
     const prompt = await this.prisma.prompt.findUnique({
       where: {
@@ -268,6 +267,7 @@ export class PromptService {
           id: promptIdSlug,
           projectId: projectId,
         },
+        tenantId: tenantId,
       },
       include: {
         tags: true,
@@ -292,56 +292,101 @@ export class PromptService {
     promptIdSlug: string,
     updateDto: UpdatePromptDto,
     projectId: string,
+    tenantId: string,
+    ownerUserId: string,
   ): Promise<PromptWithRelations> {
-    await this.findOne(promptIdSlug, projectId);
+    const {
+      name,
+      description,
+      tagIds,
+      type,
+      ...restData
+    } = updateDto;
 
-    const { tagIds, description } = updateDto;
-    const promptDataToUpdate: Prisma.PromptUpdateInput = {};
+    // Verificar que el prompt existe
+    const prompt = await this.prisma.prompt.findUnique({
+      where: {
+        prompt_id_project_unique: {
+          id: promptIdSlug,
+          projectId: projectId,
+        },
+        tenantId: tenantId,
+      },
+    });
 
-    if (description !== undefined) {
-      promptDataToUpdate.description = description;
+    if (!prompt) {
+      throw new NotFoundException(
+        `Prompt with ID "${promptIdSlug}" not found in project "${projectId}".`,
+      );
     }
 
-    if (tagIds !== undefined) {
-      const tagsInProject = await this.prisma.tag.findMany({
+    let tagsToConnect: Prisma.TagWhereUniqueInput[] | undefined = undefined;
+    if (tagIds && tagIds.length > 0) {
+      const existingTags = await this.prisma.tag.findMany({
         where: { id: { in: tagIds }, projectId: projectId },
-        select: { id: true },
+        select: { id: true, name: true },
       });
-      if (tagsInProject.length !== tagIds.length) {
-        const foundTagIds = new Set(tagsInProject.map((t) => t.id));
-        const missingTagIds = tagIds.filter((id) => !foundTagIds.has(id));
+      if (existingTags.length !== tagIds.length) {
+        const foundTagIds = new Set(existingTags.map((t) => t.id));
+        const missingTags = tagIds.filter((id) => !foundTagIds.has(id));
         throw new NotFoundException(
-          `Tags with IDs [${missingTagIds.join(', ')}] not found in project '${projectId}'.`,
+          `Tags not found in project '${projectId}': ${missingTags.join(', ')}`,
         );
       }
-      promptDataToUpdate.tags = { set: tagIds.map((id) => ({ id: id })) };
-    }
-
-    if (Object.keys(promptDataToUpdate).length === 0) {
-      return this.findOne(promptIdSlug, projectId);
+      tagsToConnect = existingTags.map((tag) => ({ id: tag.id }));
     }
 
     try {
-      await this.prisma.prompt.update({
+      const updatedPrompt = await this.prisma.prompt.update({
         where: {
           prompt_id_project_unique: {
             id: promptIdSlug,
             projectId: projectId,
           },
+          tenantId: tenantId,
         },
-        data: promptDataToUpdate,
+        data: {
+          name: name,
+          description: description,
+          type: type,
+          ownerUserId: ownerUserId,
+          tags: tagsToConnect ? { set: tagsToConnect } : undefined,
+          ...restData,
+        } as any,
+        include: {
+          tags: true,
+          versions: {
+            include: {
+              translations: true,
+              activeInEnvironments: { select: { id: true, name: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+          },
+        },
       });
-      return this.findOne(promptIdSlug, projectId);
+
+      // Registrar la actividad
+      await this.activityLogService.logActivity({
+        action: ActivityAction.UPDATE,
+        entityType: ActivityEntityType.PROMPT,
+        entityId: updatedPrompt.id,
+        userId: ownerUserId,
+        projectId: projectId,
+        details: {
+          name: updatedPrompt.name,
+          type: updatedPrompt.type,
+        },
+      });
+
+      return updatedPrompt;
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2025'
-      ) {
-        throw new NotFoundException(
-          `Prompt "${promptIdSlug}" or related entity not found during update.`,
-        );
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new ConflictException(
+            `A prompt with this name already exists in project '${projectId}'.`,
+          );
+        }
       }
-      console.error(`Error updating prompt ${promptIdSlug}:`, error);
       throw error;
     }
   }
@@ -349,184 +394,72 @@ export class PromptService {
   async remove(
     id: string,
     projectId: string,
-    userId?: string,
-    tenantId?: string,
+    ownerUserId: string,
+    tenantId: string,
     backupOptions?: Partial<PromptBackupOptions>,
   ): Promise<void> {
-    this.logger.log(
-      `Attempting to delete prompt "${id}" from project "${projectId}"`,
-    );
+    const prompt = await this.prisma.prompt.findUnique({
+      where: {
+        prompt_id_project_unique: {
+          id: id,
+          projectId: projectId,
+        },
+        tenantId: tenantId,
+      },
+    });
 
-    // Prepare audit context
-    const auditContext: LogContext = {
-      userId: userId || 'system',
-      tenantId: tenantId || 'unknown',
-      projectId: projectId,
-      resourceType: 'Prompt',
-      resourceId: id,
-      operation: 'DELETE_PROMPT',
-    };
+    if (!prompt) {
+      throw new NotFoundException(
+        `Prompt with ID "${id}" not found in project "${projectId}".`,
+      );
+    }
 
-    let prompt: PromptWithRelations;
     try {
-      // Get the prompt details before deletion for audit logging
-      prompt = await this.findOne(id, projectId);
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        // Prompt already doesn't exist - this is idempotent behavior
-        this.logger.log(
-          `Prompt "${id}" not found in project "${projectId}" - already deleted or never existed`,
-        );
-
-        // Log as successful deletion with minimal data (idempotent operation)
-        this.auditLogger.logDeletion(
-          auditContext,
-          'Prompt',
+      // Crear backup si se solicita
+      if (backupOptions) {
+        const fullBackupOptions: PromptBackupOptions = {
+          deletedBy: ownerUserId,
+          deletionReason: backupOptions.deletionReason || 'Manual deletion',
+          includeExecutionLogs: backupOptions.includeExecutionLogs ?? true,
+          executionLogsLimit: backupOptions.executionLogsLimit ?? 100,
+        };
+        await this.promptBackupService.createPromptBackup(
           id,
-          undefined, // resourceName unknown
-          { id, projectId, note: 'Already deleted or never existed' },
+          projectId,
+          fullBackupOptions,
         );
-
-        return; // Exit successfully - DELETE is idempotent
       }
 
-      // For other errors, log and re-throw
-      this.logger.error(
-        `Error finding prompt "${id}" for deletion in project "${projectId}": ${error.message}`,
-        error.stack,
-      );
-
-      this.auditLogger.logDeletion(
-        auditContext,
-        'Prompt',
-        id,
-        undefined,
-        undefined,
-        error,
-      );
-
-      throw error;
-    }
-
-    // 🚨 CREAR BACKUP COMPLETO ANTES DE LA ELIMINACIÓN 🚨
-    let backupInfo: { backupData: any; backupPath?: string } | undefined;
-    try {
-      this.logger.log(
-        `Creating complete backup for prompt "${id}" (${prompt.name}) before deletion`,
-      );
-
-      const fullBackupOptions: PromptBackupOptions = {
-        deletedBy: userId || 'system',
-        deletionReason: backupOptions?.deletionReason || 'Manual deletion',
-        includeExecutionLogs: backupOptions?.includeExecutionLogs ?? true,
-        executionLogsLimit: backupOptions?.executionLogsLimit ?? 100,
-      };
-
-      backupInfo = await this.promptBackupService.createPromptBackup(
-        id,
-        projectId,
-        fullBackupOptions,
-      );
-
-      this.logger.log(
-        `Backup created successfully for prompt "${id}". ` +
-        `Size: ${JSON.stringify(backupInfo.backupData).length} characters` +
-        (backupInfo.backupPath ? `, saved to: ${backupInfo.backupPath}` : ''),
-      );
-    } catch (backupError) {
-      this.logger.error(
-        `Failed to create backup for prompt "${id}" before deletion: ${backupError.message}`,
-        backupError.stack,
-      );
-
-      // En producción, podrías decidir:
-      // 1. Abortar la eliminación si el backup falla (más seguro)
-      // 2. Continuar con warning (más funcional)
-      // Por ahora, continuamos con warning
-      this.logger.warn(
-        `Proceeding with deletion of prompt "${id}" despite backup failure. ` +
-        `Manual backup recommended before permanent data loss.`,
-      );
-    }
-
-    // Store prompt data for audit log before deletion
-    const promptDataForAudit = {
-      id: prompt.id,
-      name: prompt.name,
-      description: prompt.description,
-      type: prompt.type,
-      projectId: prompt.projectId,
-      tenantId: prompt.tenantId,
-      createdAt: prompt.createdAt,
-      updatedAt: prompt.updatedAt,
-      versionsCount: prompt.versions?.length || 0,
-      tagsCount: prompt.tags?.length || 0,
-      // Información del backup
-      backupCreated: !!backupInfo,
-      backupPath: backupInfo?.backupPath,
-      backupSize: backupInfo ? JSON.stringify(backupInfo.backupData).length : 0,
-      deletionReason: backupOptions?.deletionReason,
-    };
-
-    try {
-      // Perform the deletion
       await this.prisma.prompt.delete({
         where: {
           prompt_id_project_unique: {
-            id: prompt.id,
+            id: id,
             projectId: projectId,
           },
+          tenantId: tenantId,
         },
       });
 
-      this.logger.log(
-        `Successfully deleted prompt "${id}" (${prompt.name}) from project "${projectId}"`,
-      );
-
-      // Log successful deletion
-      this.auditLogger.logDeletion(
-        auditContext,
-        'Prompt',
-        id,
-        prompt.name,
-        promptDataForAudit,
-      );
+      // Registrar la actividad
+      await this.activityLogService.logActivity({
+        action: ActivityAction.DELETE,
+        entityType: ActivityEntityType.PROMPT,
+        entityId: id,
+        userId: ownerUserId,
+        projectId: projectId,
+        details: {
+          name: prompt.name,
+          type: prompt.type,
+        },
+      });
     } catch (error) {
-      // Handle specific Prisma errors
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2025'
-      ) {
-        // Prompt was deleted by another process between findOne and delete
-        this.logger.log(
-          `Prompt "${id}" was already deleted by another process during deletion attempt`,
-        );
-
-        // Log as successful deletion (idempotent behavior)
-        this.auditLogger.logDeletion(auditContext, 'Prompt', id, prompt.name, {
-          ...promptDataForAudit,
-          note: 'Deleted by concurrent operation',
-        });
-
-        return; // Exit successfully - goal achieved
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2003') {
+          throw new ConflictException(
+            `Cannot delete prompt "${id}" because it is referenced by other records.`,
+          );
+        }
       }
-
-      this.logger.error(
-        `Failed to delete prompt "${id}" from project "${projectId}": ${error.message}`,
-        error.stack,
-      );
-
-      // Log failed deletion
-      this.auditLogger.logDeletion(
-        auditContext,
-        'Prompt',
-        id,
-        prompt.name,
-        promptDataForAudit,
-        error,
-      );
-
-      // Re-throw the error for non-idempotent cases
       throw error;
     }
   }
@@ -540,7 +473,20 @@ export class PromptService {
     projectId: string,
   ): Promise<PromptVersion> {
     // 1. Validar prompt padre usando slug
-    const prompt = await this.findOne(promptIdSlug, projectId);
+    const prompt = await this.prisma.prompt.findUnique({
+      where: {
+        prompt_id_project_unique: {
+          id: promptIdSlug,
+          projectId: projectId,
+        },
+      },
+    }) as any;
+
+    if (!prompt) {
+      throw new NotFoundException(
+        `Prompt with ID (slug) "${promptIdSlug}" not found in project "${projectId}".`,
+      );
+    }
 
     // 2. Se elimina la búsqueda de la versión más reciente y el cálculo del siguiente tag.
     // El versionTag ahora viene del DTO.
@@ -563,7 +509,7 @@ export class PromptService {
       initialTranslations,
     } = createVersionDto;
     try {
-      return await this.prisma.promptVersion.create({
+      const newVersion = await this.prisma.promptVersion.create({
         data: {
           promptId: prompt.id, // prompt.id es el slug
           versionTag: versionTag, // Usar el tag del DTO
@@ -585,6 +531,22 @@ export class PromptService {
           activeInEnvironments: { select: { id: true, name: true } },
         },
       });
+
+      // Registrar la actividad
+      await this.activityLogService.logActivity({
+        action: ActivityAction.CREATE,
+        entityType: ActivityEntityType.PROMPT_VERSION,
+        entityId: newVersion.id,
+        userId: prompt.ownerUserId,
+        projectId: projectId,
+        details: {
+          promptId: promptIdSlug,
+          versionTag: newVersion.versionTag,
+          languageCode: newVersion.languageCode,
+        },
+      });
+
+      return newVersion;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -612,7 +574,7 @@ export class PromptService {
     // Obtener versión y verificar pertenencia del prompt padre al proyecto
     const version = await this.prisma.promptVersion.findUnique({
       where: { id: promptVersionIdCuid },
-      select: { prompt: { select: { id: true, projectId: true } } }, // Obtener promptId (slug) y projectId
+      include: { prompt: true },
     });
 
     if (!version) {
@@ -628,7 +590,7 @@ export class PromptService {
     }
 
     const { languageCode, promptText } = translationDto;
-    return this.prisma.promptTranslation.upsert({
+    const translation = await this.prisma.promptTranslation.upsert({
       where: {
         versionId_languageCode: {
           versionId: promptVersionIdCuid,
@@ -638,6 +600,21 @@ export class PromptService {
       update: { promptText },
       create: { versionId: promptVersionIdCuid, languageCode, promptText },
     });
+
+    // Registrar la actividad
+    await this.activityLogService.logActivity({
+      action: ActivityAction.UPDATE,
+      entityType: ActivityEntityType.PROMPT_TRANSLATION,
+      entityId: translation.id,
+      userId: (version.prompt as any).ownerUserId,
+      projectId: projectId,
+      details: {
+        promptVersionId: promptVersionIdCuid,
+        languageCode: translation.languageCode,
+      },
+    });
+
+    return translation;
   }
 
   /**
@@ -778,32 +755,31 @@ export class PromptService {
     const promptSlug = slugify(promptMeta.name);
 
     return this.prisma.$transaction(async (tx) => {
-      // 1. Opcional: Verificar que el proyecto existe y pertenece al tenant si es necesario.
-      // Por ahora, asumimos que projectId es válido y accesible.
-      // const project = await this.projectService.findOne(projectId, tenantId); // Podría lanzar NotFoundException
-      // if (!project) throw new NotFoundException(`Project with ID "${projectId}" not found.`);
-
-      // 2. Crear Prompt
-      let prompt = await tx.prompt.findUnique({
+      // 1. Verificar que el prompt no existe
+      const existingPrompt = await tx.prompt.findUnique({
         where: { prompt_id_project_unique: { id: promptSlug, projectId } },
       });
 
-      if (prompt) {
+      if (existingPrompt) {
         throw new ConflictException(
           `Prompt with name (slug: "${promptSlug}") already exists in project "${projectId}".`,
         );
       }
 
-      prompt = await tx.prompt.create({
+      // 2. Crear Prompt
+      const prompt = await tx.prompt.create({
         data: {
           id: promptSlug,
           name: promptMeta.name,
           description: promptMeta.description,
           projectId: projectId,
           tenantId: tenantId,
+          ownerUserId: promptMeta.ownerUserId,
+          type: promptMeta.type
         },
       });
-      this.logger.debug(`Created Prompt: ${prompt.name} (ID: ${prompt.id})`);
+
+      this.logger.debug(`Created prompt: ${prompt.name} (ID: ${prompt.id})`);
 
       // 3. Crear Assets, sus Versiones y Traducciones de Assets
       const createdAssetsData = new Map<
@@ -841,9 +817,6 @@ export class PromptService {
               },
             },
           });
-          this.logger.debug(
-            `Created PromptAsset: ${newDbAsset.key} (ID: ${newDbAsset.id}) for prompt ${prompt.id}`,
-          );
 
           const newDbAssetVersion = await tx.promptAssetVersion.create({
             data: {
@@ -853,24 +826,18 @@ export class PromptService {
                 assetEntry.changeMessage ||
                 'Initial version from loaded structure.',
               status: 'active',
-              versionTag: '1.0.0', // O una lógica para el tag de versión
+              versionTag: '1.0.0',
             },
           });
-          this.logger.debug(
-            `Created PromptAssetVersion for asset: ${newDbAsset.key}`,
-          );
 
           if (assetEntry.translations && assetEntry.translations.length > 0) {
             await tx.assetTranslation.createMany({
               data: assetEntry.translations.map((t) => ({
                 versionId: newDbAssetVersion.id,
                 languageCode: t.languageCode,
-                value: t.value,
+                value: t.promptText,
               })),
             });
-            this.logger.debug(
-              `Created ${assetEntry.translations.length} translations for asset version: ${newDbAsset.key}`,
-            );
           }
           createdAssetsData.set(newDbAsset.key, {
             cuid: newDbAsset.id,
@@ -880,36 +847,21 @@ export class PromptService {
         }
       }
 
-      // Validar que todos los assets en versionData.assets fueron definidos en assetEntries
-      if (versionData.assets && versionData.assets.length > 0) {
-        for (const assetKey of versionData.assets) {
-          if (!createdAssetsData.has(assetKey)) {
-            throw new BadRequestException(
-              `Asset with key "${assetKey}" was listed in version.assets but not defined in the main assets list.`,
-            );
-          }
-        }
-      }
-
       // 4. Crear PromptVersion
       const newDbPromptVersion = await tx.promptVersion.create({
         data: {
-          promptId: prompt.id, // slug del prompt padre
+          promptId: prompt.id,
           promptText: versionData.promptText,
-          languageCode: languageCode, // Usar el languageCode del DTO
+          languageCode: languageCode,
           changeMessage:
             versionData.changeMessage ||
             'Initial version from loaded structure.',
           versionTag: '1.0.0',
           status: 'active',
-          // No hay conexión directa a PromptAsset en PromptVersion según el schema actual
         },
       });
-      this.logger.debug(
-        `Created PromptVersion (ID: ${newDbPromptVersion.id}) for prompt: ${prompt.name}`,
-      );
 
-      // 5. Crear PromptTranslations para la PromptVersion
+      // 5. Crear PromptTranslations
       if (versionData.translations && versionData.translations.length > 0) {
         await tx.promptTranslation.createMany({
           data: versionData.translations.map((t) => ({
@@ -918,9 +870,6 @@ export class PromptService {
             promptText: t.promptText,
           })),
         });
-        this.logger.debug(
-          `Created ${versionData.translations.length} translations for prompt version: ${newDbPromptVersion.id}`,
-        );
       }
 
       // 6. Manejar Tags
@@ -938,7 +887,6 @@ export class PromptService {
                 description: `Tag: ${tagName}`,
               },
             });
-            this.logger.debug(`Created Tag: ${tag.name}`);
           }
           tagObjectsToConnect.push({ id: tag.id });
         }
@@ -947,19 +895,16 @@ export class PromptService {
             where: { id: prompt.id },
             data: { tags: { connect: tagObjectsToConnect } },
           });
-          this.logger.debug(
-            `Connected ${tagObjectsToConnect.length} tags to prompt: ${prompt.name}`,
-          );
         }
       }
 
-      // 7. Devolver el prompt principal creado con algunas relaciones para la respuesta
-      const resultPrompt = await tx.prompt.findUniqueOrThrow({
+      // 7. Devolver el prompt creado con sus relaciones
+      return tx.prompt.findUniqueOrThrow({
         where: { prompt_id_project_unique: { id: promptSlug, projectId } },
         include: {
           versions: {
             orderBy: { createdAt: 'desc' },
-            take: 1, // Solo la versión que acabamos de crear
+            take: 1,
             include: {
               translations: true,
             },
@@ -967,10 +912,37 @@ export class PromptService {
           tags: true,
         },
       });
-      this.logger.log(
-        `Successfully loaded structure for prompt: ${resultPrompt.name}`,
+    });
+  }
+
+  async getVersions(
+    promptIdSlug: string,
+    projectId: string,
+    tenantId: string,
+  ): Promise<PromptVersion[]> {
+    const prompt = await this.prisma.prompt.findUnique({
+      where: {
+        prompt_id_project_unique: {
+          id: promptIdSlug,
+          projectId: projectId,
+        },
+        tenantId: tenantId,
+      },
+    });
+
+    if (!prompt) {
+      throw new NotFoundException(
+        `Prompt with ID (slug) "${promptIdSlug}" not found in project "${projectId}".`,
       );
-      return resultPrompt;
+    }
+
+    return this.prisma.promptVersion.findMany({
+      where: { promptId: prompt.id },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        translations: true,
+        activeInEnvironments: { select: { id: true, name: true } },
+      },
     });
   }
 }

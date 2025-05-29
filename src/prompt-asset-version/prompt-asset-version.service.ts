@@ -7,10 +7,19 @@ import {
 import { CreatePromptAssetVersionDto } from './dto/create-prompt-asset-version.dto';
 import { UpdatePromptAssetVersionDto } from './dto/update-prompt-asset-version.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma, PromptAssetVersion, PromptAsset } from '@prisma/client';
+import {
+  Prisma,
+  PromptAssetVersion,
+  PromptAsset,
+  MarketplacePublishStatus,
+  Prompt,
+  ActivityAction,
+  ActivityEntityType,
+} from '@prisma/client';
 import { TenantService } from '../tenant/tenant.service';
-import { MarketplacePublishStatus } from '@prisma/client';
 import { Logger } from '@nestjs/common';
+import { ActivityLogService } from '../services/activityLogService';
+import { AuditLoggerService } from '../common/services/audit-logger.service';
 
 @Injectable()
 export class PromptAssetVersionService {
@@ -19,34 +28,36 @@ export class PromptAssetVersionService {
   constructor(
     private prisma: PrismaService,
     private tenantService: TenantService,
+    private activityLogService: ActivityLogService,
+    private auditLogger: AuditLoggerService,
   ) { }
 
-  // Helper para obtener el PromptAsset padre.
-  // Devuelve el PromptAsset con su ID CUID.
   private async getParentAsset(
     projectId: string,
     promptId: string,
     assetKey: string,
-  ): Promise<PromptAsset> {
+  ): Promise<PromptAsset & { prompt: Prompt }> {
     const asset = await this.prisma.promptAsset.findUnique({
       where: {
         prompt_asset_key_unique: { projectId, promptId, key: assetKey },
       },
-      // Incluir prompt y project para validación o uso posterior si es necesario
-      include: { prompt: { include: { project: true } } },
+      include: {
+        prompt: true,
+      },
     });
+
     if (!asset) {
       throw new NotFoundException(
         `PromptAsset with key "${assetKey}" for prompt "${promptId}" not found in project "${projectId}".`,
       );
     }
-    // Opcional: Verificar que asset.prompt.projectId === projectId
-    // Esto debería ser garantizado por la clave única si los IDs son correctos.
+
     if (asset.prompt.projectId !== projectId) {
       throw new ForbiddenException(
         'Mismatch between asset project and provided project ID.',
       );
     }
+
     return asset;
   }
 
@@ -55,38 +66,58 @@ export class PromptAssetVersionService {
     promptId: string,
     assetKey: string,
     createDto: CreatePromptAssetVersionDto,
-  ): Promise<PromptAssetVersion> {
+  ): Promise<PromptAssetVersion & { asset: PromptAsset & { prompt: Prompt } }> {
     const parentAsset = await this.getParentAsset(
       projectId,
       promptId,
       assetKey,
     );
 
-    const { versionTag, ...versionData } = createDto; // versionTag es requerido en el DTO
+    const { versionTag, ...versionData } = createDto;
 
     try {
-      return await this.prisma.promptAssetVersion.create({
+      const newVersion = await this.prisma.promptAssetVersion.create({
         data: {
-          ...versionData, // value, changeMessage, languageCode
+          ...versionData,
           versionTag: versionTag,
-          asset: { connect: { id: parentAsset.id } }, // Conectar usando el ID CUID del PromptAsset padre
-          // status: 'active', // Considerar si las nuevas versiones deben ser activas por defecto
+          asset: { connect: { id: parentAsset.id } },
         },
-        include: { asset: true },
+        include: {
+          asset: {
+            include: {
+              prompt: true,
+            },
+          },
+        },
       });
+
+      await this.activityLogService.logActivity({
+        action: 'CREATE',
+        entityType: 'PROMPT_ASSET_VERSION',
+        entityId: newVersion.id,
+        userId: parentAsset.prompt.ownerUserId,
+        projectId: projectId,
+        details: {
+          assetKey,
+          promptId,
+          versionTag: newVersion.versionTag,
+          languageCode: newVersion.languageCode,
+        },
+      });
+
+      return newVersion;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        // Unique constraint violation (assetId + versionTag)
         throw new ConflictException(
           `Version tag "${versionTag}" already exists for asset "${assetKey}" (ID: ${parentAsset.id}).`,
         );
       }
-      console.error(
+      this.logger.error(
         `Error creating version "${versionTag}" for asset "${assetKey}" (ID: ${parentAsset.id}):`,
-        error,
+        error instanceof Error ? error.stack : error,
       );
       throw error;
     }
@@ -119,13 +150,13 @@ export class PromptAssetVersionService {
     assetKey: string,
     versionTag: string,
     languageCode?: string,
-  ): Promise<PromptAssetVersion> {
+  ): Promise<PromptAssetVersion & { asset: PromptAsset & { prompt: Prompt } }> {
     const parentAsset = await this.getParentAsset(
       projectId,
       promptId,
       assetKey,
     );
-    let version: PromptAssetVersion | null = null;
+    let version: (PromptAssetVersion & { asset: PromptAsset & { prompt: Prompt } }) | null = null;
     if (languageCode) {
       version = await this.prisma.promptAssetVersion.findFirst({
         where: {
@@ -138,7 +169,11 @@ export class PromptAssetVersionService {
           },
         },
         include: {
-          asset: true,
+          asset: {
+            include: {
+              prompt: true,
+            },
+          },
           translations: true,
         },
       });
@@ -151,7 +186,11 @@ export class PromptAssetVersionService {
           },
         },
         include: {
-          asset: true,
+          asset: {
+            include: {
+              prompt: true,
+            },
+          },
           translations: true,
         },
       });
@@ -165,53 +204,38 @@ export class PromptAssetVersionService {
   }
 
   async update(
+    id: string,
     projectId: string,
-    promptId: string,
-    assetKey: string,
-    versionTag: string,
-    updateDto: UpdatePromptAssetVersionDto,
-  ): Promise<PromptAssetVersion> {
-    const existingVersion = await this.findOneByTag(
-      projectId,
-      promptId,
-      assetKey,
-      versionTag,
-    );
+    userId: string,
+    data: Prisma.PromptAssetVersionUpdateInput,
+  ): Promise<PromptAssetVersion & { asset: PromptAsset & { prompt: Prompt } }> {
+    const existingVersion = await this.findOne(id);
 
-    // Excluir campos que no deben actualizarse o no existen en UpdatePromptAssetVersionDto
-    const {
-      assetId: _dtoAssetId,
-      versionTag: _dtoVersionTag,
-      ...dataToUpdate
-    } = updateDto as any;
-
-    if (Object.keys(dataToUpdate).length === 0) {
-      return existingVersion;
-    }
-
-    try {
-      return await this.prisma.promptAssetVersion.update({
-        where: {
-          id: existingVersion.id, // Usar el CUID id de la PromptAssetVersion para la actualización
+    const updatedVersion = await this.prisma.promptAssetVersion.update({
+      where: { id },
+      data,
+      include: {
+        asset: {
+          include: {
+            prompt: true,
+          },
         },
-        data: dataToUpdate, // value, changeMessage, languageCode
-        include: { asset: true },
-      });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2025'
-      ) {
-        throw new NotFoundException(
-          `PromptAssetVersion with ID "${existingVersion.id}" not found during update.`,
-        );
-      }
-      console.error(
-        `Error updating version ID "${existingVersion.id}" for asset "${assetKey}" with tag "${versionTag}":`,
-        error,
-      );
-      throw error;
-    }
+      },
+    });
+
+    await this.activityLogService.logActivity({
+      action: ActivityAction.UPDATE,
+      entityType: ActivityEntityType.PROMPT_ASSET_VERSION,
+      entityId: id,
+      userId,
+      projectId,
+      details: {
+        versionTag: updatedVersion.versionTag,
+        assetKey: updatedVersion.asset.key,
+      },
+    });
+
+    return updatedVersion;
   }
 
   async remove(
@@ -219,212 +243,177 @@ export class PromptAssetVersionService {
     promptId: string,
     assetKey: string,
     versionTag: string,
-  ): Promise<PromptAssetVersion> {
-    this.logger.log(
-      `Attempting to delete asset version "${versionTag}" for asset "${assetKey}" in prompt "${promptId}" (project "${projectId}")`,
-    );
-
-    let existingVersion: PromptAssetVersion;
-    try {
-      existingVersion = await this.findOneByTag(
-        projectId,
-        promptId,
-        assetKey,
-        versionTag,
-      );
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        // Version already doesn't exist - this is idempotent behavior
-        this.logger.log(
-          `Asset version "${versionTag}" not found for asset "${assetKey}" in prompt "${promptId}" - already deleted or never existed`,
-        );
-
-        // Return a mock asset version object to maintain API compatibility
-        const mockVersion: PromptAssetVersion = {
-          id: `deleted-${versionTag}-${assetKey}-${Date.now()}`,
-          assetId: `unknown-asset-${Date.now()}`,
-          value: '',
-          versionTag,
-          changeMessage: 'Already deleted or never existed',
-          status: 'active',
-          languageCode: 'en-US',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          marketplaceStatus: 'NOT_PUBLISHED' as any,
-          marketplacePublishedAt: null,
-          marketplaceRequestedAt: null,
-          marketplaceApprovedAt: null,
-          marketplaceRejectionReason: null,
-          marketplaceRequesterId: null,
-          marketplaceApproverId: null,
-        };
-
-        return mockVersion; // Return successfully (idempotent)
-      }
-
-      this.logger.error(
-        `Error finding asset version "${versionTag}" for deletion: ${error.message}`,
-        error.stack,
-      );
-      throw error;
-    }
-
-    try {
-      const deletedVersion = await this.prisma.promptAssetVersion.delete({
-        where: {
-          id: existingVersion.id, // Usar el CUID id de la PromptAssetVersion para la eliminación
-        },
-      });
-
-      this.logger.log(
-        `Successfully deleted asset version "${versionTag}" (ID: ${existingVersion.id}) for asset "${assetKey}"`,
-      );
-      return deletedVersion;
-    } catch (error) {
-      // Handle specific Prisma errors for idempotent behavior
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2025'
-      ) {
-        // Version was deleted by another process between findOneByTag and delete
-        this.logger.log(
-          `Asset version "${versionTag}" was already deleted by another process during deletion attempt`,
-        );
-
-        // Return the existing version data (successful idempotent operation)
-        return existingVersion;
-      }
-
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2003'
-      ) {
-        throw new ConflictException(
-          `Cannot delete AssetVersion ID "${existingVersion.id}" (Tag: "${versionTag}", AssetKey: "${assetKey}") because it is still referenced.`,
-        );
-      }
-
-      this.logger.error(
-        `Error deleting version ID "${existingVersion.id}" for asset "${assetKey}" with tag "${versionTag}":`,
-        error,
-      );
-      throw error;
-    }
-  }
-
-  async findOne(id: string): Promise<PromptAssetVersion | null> {
-    return this.prisma.promptAssetVersion.findUnique({
-      where: { id },
-      include: {
-        asset: true,
-        translations: true,
-      },
-    });
-  }
-
-  // --- Marketplace Methods ---
-
-  async requestPublish(
-    projectId: string,
-    promptId: string,
-    assetKey: string,
-    versionTag: string,
-    requesterId: string,
-  ): Promise<PromptAssetVersion> {
-    const assetVersion = await this.findOneByTag(
+  ): Promise<PromptAssetVersion & { asset: PromptAsset & { prompt: Prompt } }> {
+    const existingVersion = await this.findOneByTag(
       projectId,
       promptId,
       assetKey,
       versionTag,
     );
 
-    // Para obtener tenantId, necesitamos cargar el prompt y el proyecto asociado al asset.
-    // assetVersion.assetId es el CUID del PromptAsset
-    const parentAssetWithFullPrompt = await this.prisma.promptAsset.findUnique({
-      where: { id: assetVersion.assetId },
+    try {
+      const deletedVersion = await this.prisma.promptAssetVersion.delete({
+        where: {
+          id: existingVersion.id,
+        },
+        include: {
+          asset: {
+            include: {
+              prompt: true,
+            },
+          },
+        },
+      });
+
+      await this.activityLogService.logActivity({
+        action: 'DELETE',
+        entityType: 'PROMPT_ASSET_VERSION',
+        entityId: deletedVersion.id,
+        userId: deletedVersion.asset.prompt.ownerUserId,
+        projectId: projectId,
+        details: {
+          assetKey,
+          promptId,
+          versionTag: deletedVersion.versionTag,
+          languageCode: deletedVersion.languageCode,
+        },
+      });
+
+      return deletedVersion;
+    } catch (error) {
+      this.logger.error(
+        `Error deleting version "${versionTag}" for asset "${assetKey}" (ID: ${existingVersion.id}):`,
+        error instanceof Error ? error.stack : error,
+      );
+      throw error;
+    }
+  }
+
+  async findOne(id: string): Promise<PromptAssetVersion & { asset: PromptAsset & { prompt: Prompt } }> {
+    const version = await this.prisma.promptAssetVersion.findUnique({
+      where: { id },
       include: {
-        prompt: {
+        asset: {
           include: {
-            project: { select: { tenantId: true } },
+            prompt: true,
           },
         },
       },
     });
 
-    if (
-      !parentAssetWithFullPrompt ||
-      !parentAssetWithFullPrompt.prompt ||
-      !parentAssetWithFullPrompt.prompt.project
-    ) {
-      throw new NotFoundException(
-        `Project or Prompt not found for asset "${assetKey}" (ID: ${assetVersion.assetId}) to determine tenant configuration.`,
-      );
+    if (!version) {
+      throw new NotFoundException(`Version with ID ${id} not found`);
     }
-    const tenantId = parentAssetWithFullPrompt.prompt.project.tenantId;
 
-    const requiresApproval =
-      await this.tenantService.getMarketplaceRequiresApproval(tenantId);
+    return version;
+  }
 
-    if (requiresApproval) {
-      return this.prisma.promptAssetVersion.update({
-        where: { id: assetVersion.id },
-        data: {
-          marketplaceStatus: MarketplacePublishStatus.PENDING_APPROVAL,
-          marketplaceRequestedAt: new Date(),
-          marketplaceRequesterId: requesterId,
-          marketplaceApprovedAt: null,
-          marketplaceApproverId: null,
-          marketplacePublishedAt: null,
-          marketplaceRejectionReason: null,
-        },
-      });
-    } else {
-      return this.prisma.promptAssetVersion.update({
-        where: { id: assetVersion.id },
-        data: {
-          marketplaceStatus: MarketplacePublishStatus.PUBLISHED,
-          marketplacePublishedAt: new Date(),
-          marketplaceRequestedAt: new Date(),
-          marketplaceRequesterId: requesterId,
-          marketplaceApprovedAt: null,
-          marketplaceApproverId: null,
-          marketplaceRejectionReason: null,
-        },
-      });
+  async requestPublish(
+    id: string,
+    projectId: string,
+    userId: string,
+    tenantId: string,
+  ): Promise<PromptAssetVersion & { asset: PromptAsset & { prompt: Prompt } }> {
+    const existingVersion = await this.findOne(id);
+
+    if (existingVersion.marketplaceStatus === MarketplacePublishStatus.PUBLISHED) {
+      throw new ConflictException('This version is already published');
     }
+
+    if (existingVersion.marketplaceStatus === MarketplacePublishStatus.PENDING_APPROVAL) {
+      throw new ConflictException('This version is already pending approval');
+    }
+
+    const updatedVersion = await this.prisma.promptAssetVersion.update({
+      where: { id },
+      data: {
+        marketplaceStatus: MarketplacePublishStatus.PENDING_APPROVAL,
+        marketplaceRequestedAt: new Date(),
+        marketplaceRequesterId: userId,
+      },
+      include: {
+        asset: {
+          include: {
+            prompt: true,
+          },
+        },
+      },
+    });
+
+    await this.activityLogService.logActivity({
+      action: ActivityAction.PUBLISH,
+      entityType: ActivityEntityType.PROMPT_ASSET_VERSION,
+      entityId: id,
+      userId,
+      projectId,
+      details: {
+        versionTag: updatedVersion.versionTag,
+        assetKey: updatedVersion.asset.key,
+      },
+    });
+
+    return updatedVersion;
   }
 
   async unpublish(
     projectId: string,
     promptId: string,
     assetKey: string,
-    versionTag: string /* userId: string */,
-  ): Promise<PromptAssetVersion> {
-    const assetVersion = await this.findOneByTag(
+    versionTag: string,
+  ): Promise<PromptAssetVersion & { asset: PromptAsset & { prompt: Prompt } }> {
+    const existingVersion = await this.findOneByTag(
       projectId,
       promptId,
       assetKey,
       versionTag,
     );
 
-    if (
-      assetVersion.marketplaceStatus === MarketplacePublishStatus.NOT_PUBLISHED
-    ) {
-      return assetVersion;
+    if (existingVersion.marketplaceStatus !== MarketplacePublishStatus.PUBLISHED) {
+      throw new ConflictException(
+        `Version "${versionTag}" is not published.`,
+      );
     }
 
-    return this.prisma.promptAssetVersion.update({
-      where: { id: assetVersion.id },
-      data: {
-        marketplaceStatus: MarketplacePublishStatus.NOT_PUBLISHED,
-        marketplacePublishedAt: null,
-        marketplaceApprovedAt: null,
-        marketplaceApproverId: null,
-        marketplaceRequestedAt: null,
-        marketplaceRequesterId: null,
-        marketplaceRejectionReason: null,
-      },
-    });
+    try {
+      const updatedVersion = await this.prisma.promptAssetVersion.update({
+        where: {
+          id: existingVersion.id,
+        },
+        data: {
+          marketplaceStatus: MarketplacePublishStatus.NOT_PUBLISHED,
+          marketplacePublishedAt: null,
+        },
+        include: {
+          asset: {
+            include: {
+              prompt: true,
+            },
+          },
+        },
+      });
+
+      await this.activityLogService.logActivity({
+        action: ActivityAction.UNPUBLISH,
+        entityType: ActivityEntityType.PROMPT_ASSET_VERSION,
+        entityId: updatedVersion.id,
+        userId: existingVersion.asset.prompt.ownerUserId,
+        projectId: projectId,
+        details: {
+          assetKey,
+          promptId,
+          versionTag: updatedVersion.versionTag,
+          languageCode: updatedVersion.languageCode,
+        },
+      });
+
+      return updatedVersion;
+    } catch (error) {
+      this.logger.error(
+        `Error unpublishing version "${versionTag}" of asset "${assetKey}" (ID: ${existingVersion.id}):`,
+        error instanceof Error ? error.stack : error,
+      );
+      throw error;
+    }
   }
 
   async approvePublish(
@@ -433,37 +422,61 @@ export class PromptAssetVersionService {
     assetKey: string,
     versionTag: string,
     approverId: string,
-  ): Promise<PromptAssetVersion> {
-    const assetVersion = await this.findOneByTag(
+  ): Promise<PromptAssetVersion & { asset: PromptAsset & { prompt: Prompt } }> {
+    const existingVersion = await this.findOneByTag(
       projectId,
       promptId,
       assetKey,
       versionTag,
     );
 
-    // Adicionalmente, verificar que el approver tiene permiso (ej. es ADMIN o TENANT_ADMIN del tenant correcto)
-    // Esto requeriría cargar el tenantId como en requestPublish y luego verificar el rol del approverId.
-    // Por simplicidad, esta lógica de autorización avanzada se omite aquí pero sería importante en producción.
-
-    if (
-      assetVersion.marketplaceStatus !==
-      MarketplacePublishStatus.PENDING_APPROVAL
-    ) {
-      throw new ForbiddenException(
-        'Cannot approve a version that is not pending approval.',
+    if (existingVersion.marketplaceStatus !== MarketplacePublishStatus.PENDING_APPROVAL) {
+      throw new ConflictException(
+        `Version "${versionTag}" is not pending approval.`,
       );
     }
 
-    return this.prisma.promptAssetVersion.update({
-      where: { id: assetVersion.id },
-      data: {
-        marketplaceStatus: MarketplacePublishStatus.PUBLISHED,
-        marketplaceApprovedAt: new Date(),
-        marketplaceApproverId: approverId,
-        marketplacePublishedAt: new Date(),
-        marketplaceRejectionReason: null,
-      },
-    });
+    try {
+      const updatedVersion = await this.prisma.promptAssetVersion.update({
+        where: {
+          id: existingVersion.id,
+        },
+        data: {
+          marketplaceStatus: MarketplacePublishStatus.PUBLISHED,
+          marketplaceApprovedAt: new Date(),
+          marketplaceApproverId: approverId,
+        },
+        include: {
+          asset: {
+            include: {
+              prompt: true,
+            },
+          },
+        },
+      });
+
+      await this.activityLogService.logActivity({
+        action: ActivityAction.APPROVE,
+        entityType: ActivityEntityType.PROMPT_ASSET_VERSION,
+        entityId: updatedVersion.id,
+        userId: approverId,
+        projectId: projectId,
+        details: {
+          assetKey,
+          promptId,
+          versionTag: updatedVersion.versionTag,
+          languageCode: updatedVersion.languageCode,
+        },
+      });
+
+      return updatedVersion;
+    } catch (error) {
+      this.logger.error(
+        `Error approving publish for version "${versionTag}" of asset "${assetKey}" (ID: ${existingVersion.id}):`,
+        error instanceof Error ? error.stack : error,
+      );
+      throw error;
+    }
   }
 
   async rejectPublish(
@@ -473,34 +486,62 @@ export class PromptAssetVersionService {
     versionTag: string,
     approverId: string,
     rejectionReason: string,
-  ): Promise<PromptAssetVersion> {
-    const assetVersion = await this.findOneByTag(
+  ): Promise<PromptAssetVersion & { asset: PromptAsset & { prompt: Prompt } }> {
+    const existingVersion = await this.findOneByTag(
       projectId,
       promptId,
       assetKey,
       versionTag,
     );
 
-    // Similar a approvePublish, aquí iría la lógica de autorización del approver.
-
-    if (
-      assetVersion.marketplaceStatus !==
-      MarketplacePublishStatus.PENDING_APPROVAL
-    ) {
-      throw new ForbiddenException(
-        'Cannot reject a version that is not pending approval.',
+    if (existingVersion.marketplaceStatus !== MarketplacePublishStatus.PENDING_APPROVAL) {
+      throw new ConflictException(
+        `Version "${versionTag}" is not pending approval.`,
       );
     }
 
-    return this.prisma.promptAssetVersion.update({
-      where: { id: assetVersion.id },
-      data: {
-        marketplaceStatus: MarketplacePublishStatus.REJECTED,
-        marketplaceRejectionReason: rejectionReason,
-        marketplaceApproverId: approverId,
-        marketplaceApprovedAt: null,
-        marketplacePublishedAt: null,
-      },
-    });
+    try {
+      const updatedVersion = await this.prisma.promptAssetVersion.update({
+        where: {
+          id: existingVersion.id,
+        },
+        data: {
+          marketplaceStatus: MarketplacePublishStatus.REJECTED,
+          marketplaceApprovedAt: null,
+          marketplaceApproverId: approverId,
+          marketplaceRejectionReason: rejectionReason,
+        },
+        include: {
+          asset: {
+            include: {
+              prompt: true,
+            },
+          },
+        },
+      });
+
+      await this.activityLogService.logActivity({
+        action: ActivityAction.REJECT,
+        entityType: ActivityEntityType.PROMPT_ASSET_VERSION,
+        entityId: updatedVersion.id,
+        userId: approverId,
+        projectId: projectId,
+        details: {
+          assetKey,
+          promptId,
+          versionTag: updatedVersion.versionTag,
+          languageCode: updatedVersion.languageCode,
+          rejectionReason,
+        },
+      });
+
+      return updatedVersion;
+    } catch (error) {
+      this.logger.error(
+        `Error rejecting publish for version "${versionTag}" of asset "${assetKey}" (ID: ${existingVersion.id}):`,
+        error instanceof Error ? error.stack : error,
+      );
+      throw error;
+    }
   }
 }

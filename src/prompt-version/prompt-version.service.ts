@@ -26,7 +26,7 @@ export class PromptVersionService {
     private prisma: PrismaService,
     private tenantService: TenantService,
     private servePromptService: ServePromptService,
-  ) { }
+  ) {}
 
   // Helper to verify prompt access
   private async verifyPromptAccess(

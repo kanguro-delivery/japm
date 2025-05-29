@@ -721,8 +721,9 @@ async function main() {
                         description: prompt.description,
                         type: prompt.type,
                         projectId: invoiceExtractionProject.id,
-                        tenantId: tenantId
-                    }
+                        tenantId: tenantId,
+                        ownerUserId: testUser.id
+                    } as any
                 });
             } else {
                 // Create new prompt
@@ -733,8 +734,9 @@ async function main() {
                         description: prompt.description,
                         type: prompt.type,
                         projectId: invoiceExtractionProject.id,
-                        tenantId: tenantId
-                    }
+                        tenantId: tenantId,
+                        ownerUserId: testUser.id
+                    } as any
                 });
             }
 

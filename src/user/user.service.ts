@@ -8,22 +8,40 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { Prisma, User } from '@prisma/client';
+import { AuditLoggerService } from '../common/services/audit-logger.service';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private auditLogger: AuditLoggerService,
+  ) {}
 
-  async create(createUserDto: CreateUserDto, tenantId: string): Promise<User> {
+  async create(
+    createUserDto: CreateUserDto,
+    tenantId: string,
+    adminUserId: string,
+  ): Promise<User> {
     const { password, ...rest } = createUserDto;
     const hashedPassword = await bcrypt.hash(password, 10);
     try {
-      return await this.prisma.user.create({
+      const user = await this.prisma.user.create({
         data: {
           ...rest,
           password: hashedPassword,
           tenant: { connect: { id: tenantId } },
         },
       });
+
+      this.auditLogger.logCreation(
+        { userId: adminUserId, tenantId },
+        'USER',
+        user.id,
+        user.email,
+        { email: user.email, name: user.name, role: user.role },
+      );
+
+      return user;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -75,7 +93,13 @@ export class UserService {
     });
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
+  async update(
+    id: string,
+    updateUserDto: UpdateUserDto,
+    adminUserId: string,
+    tenantId: string,
+  ): Promise<User> {
+    const existingUser = await this.findOneById(id);
     const { password, ...dataToUpdate } = updateUserDto;
 
     let hashedPassword: string | undefined = undefined;
@@ -85,13 +109,33 @@ export class UserService {
     }
 
     try {
-      return await this.prisma.user.update({
+      const updatedUser = await this.prisma.user.update({
         where: { id },
         data: {
           ...dataToUpdate,
           ...(hashedPassword && { password: hashedPassword }),
         },
       });
+
+      this.auditLogger.logUpdate(
+        { userId: adminUserId, tenantId },
+        'USER',
+        id,
+        updatedUser.email,
+        {
+          email: existingUser.email,
+          name: existingUser.name,
+          role: existingUser.role,
+        },
+        {
+          email: updatedUser.email,
+          name: updatedUser.name,
+          role: updatedUser.role,
+        },
+        Object.keys(dataToUpdate),
+      );
+
+      return updatedUser;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -110,11 +154,30 @@ export class UserService {
     }
   }
 
-  async remove(id: string): Promise<User> {
+  async remove(
+    id: string,
+    adminUserId: string,
+    tenantId: string,
+  ): Promise<User> {
+    const existingUser = await this.findOneById(id);
     try {
-      return await this.prisma.user.delete({
+      const deletedUser = await this.prisma.user.delete({
         where: { id },
       });
+
+      this.auditLogger.logDeletion(
+        { userId: adminUserId, tenantId },
+        'USER',
+        id,
+        existingUser.email,
+        {
+          email: existingUser.email,
+          name: existingUser.name,
+          role: existingUser.role,
+        },
+      );
+
+      return deletedUser;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

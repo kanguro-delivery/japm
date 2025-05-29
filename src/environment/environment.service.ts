@@ -11,7 +11,7 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class EnvironmentService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async create(
     createDto: CreateEnvironmentDto,
@@ -35,10 +35,17 @@ export class EnvironmentService {
           // or an array like ["projectId", "name"]
           const target = error.meta?.target;
           let isRelevantConstraint = false;
-          if (typeof target === 'string' && target === 'Environment_project_name_key') {
+          if (
+            typeof target === 'string' &&
+            target === 'Environment_project_name_key'
+          ) {
             isRelevantConstraint = true;
-          } else if (Array.isArray(target) && target.includes('name') && target.includes('projectId')) {
-            // Fallback: check if the target array includes the fields. 
+          } else if (
+            Array.isArray(target) &&
+            target.includes('name') &&
+            target.includes('projectId')
+          ) {
+            // Fallback: check if the target array includes the fields.
             // Note: Prisma usually provides the constraint *name* when available.
             // The error message showed 'target: Environment_project_name_key', so string check is primary.
             isRelevantConstraint = true;

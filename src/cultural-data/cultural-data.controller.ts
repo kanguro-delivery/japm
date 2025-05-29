@@ -33,6 +33,10 @@ import { Logger } from '@nestjs/common';
 // Define interface for request with projectId
 interface RequestWithProject extends ExpressRequest {
   projectId: string;
+  user: {
+    id: string;
+    tenantId: string;
+  };
 }
 
 // Define a response DTO that includes the region (optional)
@@ -52,7 +56,7 @@ class CulturalDataResponse extends CreateCulturalDataDto {
 export class CulturalDataController {
   private readonly logger = new Logger(CulturalDataController.name);
 
-  constructor(private readonly culturalDataService: CulturalDataService) {}
+  constructor(private readonly culturalDataService: CulturalDataService) { }
 
   @Post()
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
@@ -74,10 +78,12 @@ export class CulturalDataController {
     @Body() createDto: CreateCulturalDataDto,
   ): Promise<CulturalData> {
     const projectId = req.projectId;
+    const userId = req.user.id;
+    const tenantId = req.user.tenantId;
     this.logger.debug(
       `[create] Received request for projectId: ${projectId}. Body: ${JSON.stringify(createDto, null, 2)}`,
     );
-    return this.culturalDataService.create(createDto, projectId);
+    return this.culturalDataService.create(createDto, projectId, userId, tenantId);
   }
 
   @Get()
@@ -151,10 +157,12 @@ export class CulturalDataController {
     @Body() updateDto: UpdateCulturalDataDto,
   ): Promise<CulturalData> {
     const projectId = req.projectId;
+    const userId = req.user.id;
+    const tenantId = req.user.tenantId;
     this.logger.debug(
       `[update] Received PATCH for projectId: ${projectId}, culturalDataId: ${id}. Body: ${JSON.stringify(updateDto, null, 2)}`,
     );
-    return this.culturalDataService.update(id, updateDto, projectId);
+    return this.culturalDataService.update(id, updateDto, projectId, userId, tenantId);
   }
 
   @Delete(':culturalDataId')
@@ -179,6 +187,8 @@ export class CulturalDataController {
     @Param('culturalDataId') id: string,
   ): Promise<CulturalData> {
     const projectId = req.projectId;
-    return this.culturalDataService.remove(id, projectId);
+    const userId = req.user.id;
+    const tenantId = req.user.tenantId;
+    return this.culturalDataService.remove(id, projectId, userId, tenantId);
   }
 }

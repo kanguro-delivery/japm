@@ -30,7 +30,7 @@ import { ExecutePromptBodyDto } from './dto/execute-prompt-body.dto';
 @UseGuards(JwtAuthGuard, PromptConsumerGuard)
 @Controller('serve-prompt')
 export class ServePromptController {
-  constructor(private readonly service: ServePromptService) { }
+  constructor(private readonly service: ServePromptService) {}
 
   @Post('execute/:projectId/:promptName/:versionTag/base')
   @UseGuards(ProjectGuard)

@@ -46,6 +46,10 @@ import { RegionDto } from './dto/region.dto';
 // Extend Express Request interface to include projectId attached by the guard
 interface RequestWithProject extends ExpressRequest {
   projectId: string;
+  user: {
+    id: string;
+    tenantId: string;
+  };
 }
 
 @ApiTags('Regions')
@@ -105,12 +109,16 @@ export class RegionController {
     @Body() createRegionDto: CreateRegionDto,
   ): Promise<RegionDto> {
     const projectId = req.projectId;
+    const userId = req.user.id;
+    const tenantId = req.user.tenantId;
     this.logger.debug(
       `[create] Received request for projectId: ${projectId}. Body: ${JSON.stringify(createRegionDto, null, 2)}`,
     );
     const newRegion = await this.regionService.create(
       createRegionDto,
       projectId,
+      userId,
+      tenantId,
     );
     const cacheKey = this.getFindAllCacheKey(projectId);
     await this.cacheManager.del(cacheKey);
@@ -247,13 +255,17 @@ export class RegionController {
     @Body() updateRegionDto: UpdateRegionDto,
   ): Promise<RegionDto> {
     const projectId = req.projectId;
+    const userId = req.user.id;
+    const tenantId = req.user.tenantId;
     this.logger.debug(
-      `[update] Updating region ${langCode} for projectId: ${projectId}. Body: ${JSON.stringify(updateRegionDto, null, 2)}`,
+      `[update] Received PATCH for langCode: ${langCode}. Body: ${JSON.stringify(updateRegionDto, null, 2)}`,
     );
     const updatedRegion = await this.regionService.update(
       langCode,
       updateRegionDto,
       projectId,
+      userId,
+      tenantId,
     );
     const cacheKey = this.getFindAllCacheKey(projectId);
     await this.cacheManager.del(cacheKey);
@@ -261,11 +273,10 @@ export class RegionController {
   }
 
   @Delete(':langCode')
-  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete region',
     description:
-      'Deletes a region by its language code. Accessible by global admins or tenant admins.',
+      'Permanently deletes a region from the system. Accessible by global admins or tenant admins.',
   })
   @ApiParam({
     name: 'projectId',
@@ -280,7 +291,7 @@ export class RegionController {
     required: true,
   })
   @ApiResponse({
-    status: HttpStatus.NO_CONTENT,
+    status: HttpStatus.OK,
     description: 'Region deleted successfully',
   })
   @ApiResponse({
@@ -301,10 +312,9 @@ export class RegionController {
     @Param('langCode') langCode: string,
   ): Promise<void> {
     const projectId = req.projectId;
-    this.logger.debug(
-      `[remove] Deleting region ${langCode} for projectId: ${projectId}`,
-    );
-    await this.regionService.remove(langCode, projectId);
+    const userId = req.user.id;
+    const tenantId = req.user.tenantId;
+    await this.regionService.remove(langCode, projectId, userId, tenantId);
     const cacheKey = this.getFindAllCacheKey(projectId);
     await this.cacheManager.del(cacheKey);
   }

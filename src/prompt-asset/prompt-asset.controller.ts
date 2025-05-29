@@ -51,7 +51,7 @@ interface RequestWithProject extends ExpressRequest {
 export class PromptAssetController {
   private readonly logger = new Logger(PromptAssetController.name);
 
-  constructor(private readonly service: PromptAssetService) {}
+  constructor(private readonly service: PromptAssetService) { }
 
   @Post()
   @ThrottleCreation()
@@ -185,7 +185,7 @@ export class PromptAssetController {
     this.logger.debug(
       `[update] Request for assetKey: ${key}, promptId: ${promptId}, projectId: ${projectId}. Body: ${JSON.stringify(updateDto, null, 2)}`,
     );
-    return this.service.update(key, updateDto, promptId, projectId);
+    return this.service.update(key, updateDto, projectId);
   }
 
   @Delete(':assetKey')
@@ -216,6 +216,6 @@ export class PromptAssetController {
     this.logger.debug(
       `[remove] Request for assetKey: ${key}, promptId: ${promptId}, projectId: ${projectId}`,
     );
-    return this.service.remove(key, promptId, projectId);
+    return this.service.remove(key, projectId);
   }
 }

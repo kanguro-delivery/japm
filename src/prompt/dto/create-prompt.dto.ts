@@ -29,7 +29,8 @@ class InitialTranslationDto {
 
 export class CreatePromptDto {
   @ApiProperty({
-    description: 'Name for the prompt. This will be slugified by the system to create a unique identifier.',
+    description:
+      'Name for the prompt. This will be slugified by the system to create a unique identifier.',
     example: 'Customer Welcome Greeting',
   })
   @IsString()

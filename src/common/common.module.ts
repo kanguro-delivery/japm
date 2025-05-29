@@ -6,16 +6,8 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
-    imports: [PrismaModule, ConfigModule],
-    providers: [
-        AuditLoggerService,
-        StructuredLoggerService,
-        PromptBackupService,
-    ],
-    exports: [
-        AuditLoggerService,
-        StructuredLoggerService,
-        PromptBackupService,
-    ],
+  imports: [PrismaModule, ConfigModule],
+  providers: [AuditLoggerService, StructuredLoggerService, PromptBackupService],
+  exports: [AuditLoggerService, StructuredLoggerService, PromptBackupService],
 })
-export class CommonModule { } 
+export class CommonModule {}

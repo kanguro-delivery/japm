@@ -111,7 +111,7 @@ describe('Prompt Hierarchy E2E Tests', () => {
       expect(promptRef2.status).toBe(201);
 
       // Esperar un momento para asegurar que las operaciones de escritura se completen si hay alguna asincronía no manejada explícitamente
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // 3. Probar resolución del prompt usando serve-prompt endpoint
       const resolvedPrompt = await supertest(app.getHttpServer())
@@ -125,7 +125,9 @@ describe('Prompt Hierarchy E2E Tests', () => {
         .expect(201);
 
       expect(resolvedPrompt.body).toHaveProperty('processedPrompt');
-      expect(resolvedPrompt.body.processedPrompt).toBe('Main text Ref1 text Ref2 text, final.');
+      expect(resolvedPrompt.body.processedPrompt).toBe(
+        'Main text Ref1 text Ref2 text, final.',
+      );
       expect(resolvedPrompt.body).toHaveProperty('metadata');
     });
 
@@ -168,7 +170,7 @@ describe('Prompt Hierarchy E2E Tests', () => {
       expect(prompt2Res.status).toBe(201);
 
       // Esperar un momento opcional
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // 4. Intentar resolver prompt1
       const resolveResponse = await supertest(app.getHttpServer())
@@ -181,7 +183,9 @@ describe('Prompt Hierarchy E2E Tests', () => {
         });
 
       expect(resolveResponse.status).toBe(400);
-      expect(resolveResponse.body.message).toMatch(/Circular reference detected for prompt/);
+      expect(resolveResponse.body.message).toMatch(
+        /Circular reference detected for prompt/,
+      );
     });
   });
 

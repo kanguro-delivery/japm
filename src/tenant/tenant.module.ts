@@ -3,11 +3,13 @@ import { TenantService } from './tenant.service';
 import { TenantController } from './tenant.controller';
 import { PrismaModule } from '../prisma/prisma.module'; // Asegúrate que PrismaModule esté exportando PrismaService
 import { UserModule } from '../user/user.module'; // Importar UserModule
+import { CommonModule } from '../common/common.module';
 
 @Module({
   imports: [
     PrismaModule,
     UserModule, // Añadir UserModule a los imports
+    CommonModule,
   ],
   controllers: [TenantController],
   providers: [TenantService],

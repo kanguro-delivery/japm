@@ -38,7 +38,7 @@ export class ServePromptService {
   constructor(
     private prisma: PrismaService,
     // private templateService: TemplateService // Temporarily commented out
-  ) { }
+  ) {}
 
   /**
    * Resolves asset placeholders in a given text.
@@ -112,7 +112,9 @@ export class ServePromptService {
         }
         let targetVersion: (typeof assetVersions)[0] | undefined = undefined;
         if (spec.versionTag) {
-          targetVersion = assetVersions.find((v) => v.versionTag === spec.versionTag);
+          targetVersion = assetVersions.find(
+            (v) => v.versionTag === spec.versionTag,
+          );
           if (!targetVersion) {
             this.logger.warn(
               `Asset key "${spec.key}", version "${spec.versionTag}" not found. Falling back to latest active version.`,
@@ -120,13 +122,17 @@ export class ServePromptService {
           }
         }
         if (!targetVersion) {
-          targetVersion = assetVersions.find((v) => v.status === 'active') || assetVersions[0];
+          targetVersion =
+            assetVersions.find((v) => v.status === 'active') ||
+            assetVersions[0];
         }
         if (targetVersion) {
           let assetValue = targetVersion.value;
           let languageSource = 'base_asset';
           if (languageCode) {
-            const translation = targetVersion.translations.find((t) => t.languageCode === languageCode);
+            const translation = targetVersion.translations.find(
+              (t) => t.languageCode === languageCode,
+            );
             if (translation) {
               assetValue = translation.value;
               languageSource = languageCode;
@@ -154,7 +160,9 @@ export class ServePromptService {
     }
 
     const variableContext: Record<string, string> = {};
-    const variablePlaceholders = [...text.matchAll(/\{\{variable:([^}]+)\}\}/g)];
+    const variablePlaceholders = [
+      ...text.matchAll(/\{\{variable:([^}]+)\}\}/g),
+    ];
     for (const match of variablePlaceholders) {
       const placeholder = match[0];
       const variableName = match[1].trim();
@@ -167,13 +175,23 @@ export class ServePromptService {
       }
     }
 
-    for (const [placeholderContent, assetValue] of Object.entries(assetContext)) {
+    for (const [placeholderContent, assetValue] of Object.entries(
+      assetContext,
+    )) {
       const placeholder = `{{asset:${placeholderContent}}}`;
-      processedText = processedText.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), assetValue);
+      processedText = processedText.replace(
+        new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+        assetValue,
+      );
     }
-    for (const [variableName, variableValue] of Object.entries(variableContext)) {
+    for (const [variableName, variableValue] of Object.entries(
+      variableContext,
+    )) {
       const placeholder = `{{variable:${variableName}}}`;
-      processedText = processedText.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), variableValue);
+      processedText = processedText.replace(
+        new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+        variableValue,
+      );
     }
     return { processedText, resolvedAssetsMetadata };
   }
@@ -203,7 +221,8 @@ export class ServePromptService {
     const { currentDepth = 0, maxDepth = 5 } = context;
     let currentText = text;
     const resolvedPromptsMetadata: any[] = [];
-    const promptRefRegex = /\{\{prompt:(([^:}]+?)\/)?([^:}]+?)(?::([^}]+))?\}\}/g;
+    const promptRefRegex =
+      /\{\{prompt:(([^:}]+?)\/)?([^:}]+?)(?::([^}]+))?\}\}/g;
     let match;
 
     while ((match = promptRefRegex.exec(currentText)) !== null) {
@@ -211,7 +230,8 @@ export class ServePromptService {
       const specifiedProjectId = match[2];
       const referencedPromptIdentifier = match[3];
       const referencedVersionTag = match[4];
-      const projectIdForNestedPrompt = specifiedProjectId || currentProcessingProjectId;
+      const projectIdForNestedPrompt =
+        specifiedProjectId || currentProcessingProjectId;
 
       // Minimal debug log for reference found
       this.logger.debug(`Found prompt reference: ${fullMatch}`);
@@ -226,7 +246,9 @@ export class ServePromptService {
 
       try {
         // Minimal debug log for recursive call
-        this.logger.debug(`Calling executePromptVersion for nested: ${uniqueRefKey}`);
+        this.logger.debug(
+          `Calling executePromptVersion for nested: ${uniqueRefKey}`,
+        );
         const nestedResult = await this.executePromptVersion(
           {
             projectId: projectIdForNestedPrompt,
@@ -241,9 +263,14 @@ export class ServePromptService {
             maxDepth,
           },
         );
-        currentText = currentText.replace(fullMatch, nestedResult.processedPrompt);
+        currentText = currentText.replace(
+          fullMatch,
+          nestedResult.processedPrompt,
+        );
         if (nestedResult.metadata?.resolvedPrompts) {
-          resolvedPromptsMetadata.push(...nestedResult.metadata.resolvedPrompts);
+          resolvedPromptsMetadata.push(
+            ...nestedResult.metadata.resolvedPrompts,
+          );
         }
         resolvedPromptsMetadata.push({
           identifier: referencedPromptIdentifier,
@@ -307,8 +334,9 @@ export class ServePromptService {
 
     const promptNameSlug = slugify(promptName);
     const currentProjectId = projectId;
-    let promptToExecute: Partial<Prompt> & { versions?: any[] } | null = null;
-    const isCuidLike = promptName && promptName.length === 25 && promptName.startsWith('c');
+    let promptToExecute: (Partial<Prompt> & { versions?: any[] }) | null = null;
+    const isCuidLike =
+      promptName && promptName.length === 25 && promptName.startsWith('c');
 
     if (isCuidLike) {
       promptToExecute = await this.prisma.prompt.findUnique({
@@ -318,17 +346,23 @@ export class ServePromptService {
             projectId: currentProjectId,
           },
         },
-        select: { id: true, name: true, type: true, projectId: true, tenantId: true },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          projectId: true,
+          tenantId: true,
+        },
       });
     }
     if (!promptToExecute) {
       if (isCuidLike) {
         this.logger.debug(
-          `🚀 [EXECUTE PROMPT] CUID-like input "${promptName}" not found by CUID lookup. Proceeding to other lookup methods.`
+          `🚀 [EXECUTE PROMPT] CUID-like input "${promptName}" not found by CUID lookup. Proceeding to other lookup methods.`,
         );
       }
       this.logger.debug(
-        `🚀 [EXECUTE PROMPT] Input "${promptName}" not CUID-like or not found by CUID. Attempting direct ID lookup in project "${currentProjectId}".`
+        `🚀 [EXECUTE PROMPT] Input "${promptName}" not CUID-like or not found by CUID. Attempting direct ID lookup in project "${currentProjectId}".`,
       );
       // Attempt 1: Treat promptName as a potential pre-existing ID
       promptToExecute = await this.prisma.prompt.findUnique({
@@ -338,7 +372,13 @@ export class ServePromptService {
             projectId: currentProjectId,
           },
         },
-        select: { id: true, name: true, type: true, projectId: true, tenantId: true },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          projectId: true,
+          tenantId: true,
+        },
       });
 
       if (!promptToExecute) {
@@ -355,7 +395,17 @@ export class ServePromptService {
             },
           },
           // Fetch versions only when we are confident this is the prompt (by slug)
-          select: { id: true, name: true, type: true, projectId: true, tenantId: true, versions: { orderBy: { createdAt: 'desc' }, include: { translations: true } } },
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            projectId: true,
+            tenantId: true,
+            versions: {
+              orderBy: { createdAt: 'desc' },
+              include: { translations: true },
+            },
+          },
         });
       }
     }
@@ -369,10 +419,25 @@ export class ServePromptService {
       );
     }
     if (!promptToExecute.versions) {
-      const tempPromptWithVersions = await this.prisma.prompt.findUnique({ where: { prompt_id_project_unique: { id: promptToExecute.id, projectId: currentProjectId } }, select: { versions: { orderBy: { createdAt: 'desc' }, include: { translations: true } } } });
+      const tempPromptWithVersions = await this.prisma.prompt.findUnique({
+        where: {
+          prompt_id_project_unique: {
+            id: promptToExecute.id,
+            projectId: currentProjectId,
+          },
+        },
+        select: {
+          versions: {
+            orderBy: { createdAt: 'desc' },
+            include: { translations: true },
+          },
+        },
+      });
       promptToExecute.versions = tempPromptWithVersions?.versions || [];
     }
-    const resolvedPrompt = promptToExecute as Prompt & { versions: (PromptVersion & { translations: PromptTranslation[] })[] };
+    const resolvedPrompt = promptToExecute as Prompt & {
+      versions: (PromptVersion & { translations: PromptTranslation[] })[];
+    };
 
     if (processedPrompts.has(promptNameSlug)) {
       this.logger.warn(
@@ -389,18 +454,26 @@ export class ServePromptService {
     );
 
     let textForProcessing: string = '';
-    let versionUsedForProcessing: (typeof resolvedPrompt.versions)[0] | undefined = undefined;
+    let versionUsedForProcessing:
+      | (typeof resolvedPrompt.versions)[0]
+      | undefined = undefined;
     let languageUsedInVersion = 'base_language';
 
     if (resolvedPrompt.versions && resolvedPrompt.versions.length > 0) {
       const targetVersionTag = versionTag === 'latest' ? undefined : versionTag;
       if (targetVersionTag) {
-        versionUsedForProcessing = resolvedPrompt.versions.find(v => v.versionTag === targetVersionTag);
+        versionUsedForProcessing = resolvedPrompt.versions.find(
+          (v) => v.versionTag === targetVersionTag,
+        );
       }
-      if (!versionUsedForProcessing) { versionUsedForProcessing = resolvedPrompt.versions[0]; }
+      if (!versionUsedForProcessing) {
+        versionUsedForProcessing = resolvedPrompt.versions[0];
+      }
     }
     if (!versionUsedForProcessing) {
-      throw new NotFoundException(`No version for prompt "${resolvedPrompt.name}" (tag: ${versionTag || 'latest'}).`);
+      throw new NotFoundException(
+        `No version for prompt "${resolvedPrompt.name}" (tag: ${versionTag || 'latest'}).`,
+      );
     }
 
     // Minimal debug for version used
@@ -409,25 +482,35 @@ export class ServePromptService {
     textForProcessing = versionUsedForProcessing.promptText;
     languageUsedInVersion = 'base_language';
     if (languageCode && versionUsedForProcessing.translations?.length) {
-      const translation = versionUsedForProcessing.translations.find(t => t.languageCode === languageCode);
+      const translation = versionUsedForProcessing.translations.find(
+        (t) => t.languageCode === languageCode,
+      );
       if (translation) {
         textForProcessing = translation.promptText;
         languageUsedInVersion = languageCode;
-      } else { languageUsedInVersion = 'base_language_fallback'; }
+      } else {
+        languageUsedInVersion = 'base_language_fallback';
+      }
     }
 
     if (resolvedPrompt.type === 'TEMPLATE') {
-      this.logger.log(`Prompt "${resolvedPrompt.name}" is TEMPLATE, content will be processed.`);
+      this.logger.log(
+        `Prompt "${resolvedPrompt.name}" is TEMPLATE, content will be processed.`,
+      );
     }
 
-    const { processedText: textWithAssetsAndVars, resolvedAssetsMetadata } = await this.resolveAssets(
-      textForProcessing,
-      resolvedPrompt.id,
-      resolvedPrompt.projectId,
-      languageCode,
-      variables,
-    );
-    const { processedText: finalTextAfterRefResolution, resolvedPromptsMetadata } = await this.resolvePromptReferences(
+    const { processedText: textWithAssetsAndVars, resolvedAssetsMetadata } =
+      await this.resolveAssets(
+        textForProcessing,
+        resolvedPrompt.id,
+        resolvedPrompt.projectId,
+        languageCode,
+        variables,
+      );
+    const {
+      processedText: finalTextAfterRefResolution,
+      resolvedPromptsMetadata,
+    } = await this.resolvePromptReferences(
       textWithAssetsAndVars,
       resolvedPrompt.projectId,
       body,

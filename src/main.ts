@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import { PrismaClientExceptionFilter } from './common/filters/prisma-exception.filter';
 import { TenantIdInterceptor } from './common/interceptors/tenant-id.interceptor';
 import { Logger, ValidationPipe } from '@nestjs/common';
+import { ActivityLogInterceptor } from './interceptors/activity-log.interceptor';
 // import { HttpExceptionFilter } from './common/filters/http-exception.filter'; // Optional: A generic HTTP exception filter
 
 async function bootstrap() {
@@ -37,6 +38,9 @@ async function bootstrap() {
 
   // Aplica el interceptor global para tenantId
   app.useGlobalInterceptors(new TenantIdInterceptor());
+
+  // Aplica el interceptor global para activity log
+  app.useGlobalInterceptors(app.get(ActivityLogInterceptor));
 
   const config = new DocumentBuilder()
     .setTitle('japm.app API')
@@ -72,7 +76,12 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   // Enable CORS
-  app.enableCors();
+  app.enableCors({
+    origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:3001'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    credentials: true,
+  });
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

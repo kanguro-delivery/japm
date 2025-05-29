@@ -26,13 +26,20 @@ import {
   ApiBody,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { PromptAssetVersion } from '@prisma/client';
+import { PromptAssetVersion, User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
   ProjectGuard,
   PROJECT_ID_PARAM_KEY,
 } from '../common/guards/project.guard';
 import { Logger } from '@nestjs/common';
+
+interface RequestWithUser extends Request {
+  user: User & {
+    userId: string;
+    tenantId: string;
+  };
+}
 
 @ApiTags('PromptAssetVersions')
 @ApiBearerAuth()
@@ -42,7 +49,7 @@ import { Logger } from '@nestjs/common';
 export class PromptAssetVersionController {
   private readonly logger = new Logger(PromptAssetVersionController.name);
 
-  constructor(private readonly service: PromptAssetVersionService) {}
+  constructor(private readonly service: PromptAssetVersionService) { }
 
   @Post()
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
@@ -176,21 +183,27 @@ export class PromptAssetVersionController {
     status: 404,
     description: 'Project, Asset, or Version not found.',
   })
-  update(
+  async update(
     @Param('projectId') projectId: string,
     @Param('promptId') promptId: string,
     @Param('assetKey') assetKey: string,
     @Param('versionTag') versionTag: string,
     @Body() updateDto: UpdatePromptAssetVersionDto,
+    @Request() req: RequestWithUser,
   ): Promise<PromptAssetVersion> {
     this.logger.debug(
       `[update] Received PATCH for projectId: ${projectId}, promptId: ${promptId}, assetKey: ${assetKey}, versionTag: ${versionTag}. Body: ${JSON.stringify(updateDto, null, 2)}`,
     );
-    return this.service.update(
+    const version = await this.service.findOneByTag(
       projectId,
       promptId,
       assetKey,
       versionTag,
+    );
+    return this.service.update(
+      version.id,
+      projectId,
+      req.user.userId,
       updateDto,
     );
   }
@@ -225,9 +238,9 @@ export class PromptAssetVersionController {
 
   // --- Marketplace Endpoints ---
 
-  @Post(':versionTag/request-publish')
+  @Post(':versionTag/publish')
   @ApiOperation({
-    summary: 'Request to publish an asset version to the marketplace',
+    summary: 'Request to publish a specific prompt asset version',
   })
   @ApiParam({
     name: 'projectId',
@@ -235,42 +248,53 @@ export class PromptAssetVersionController {
   })
   @ApiParam({ name: 'promptId', description: 'ID (slug) of the Prompt' })
   @ApiParam({ name: 'assetKey', description: 'Key of the PromptAsset' })
-  @ApiParam({ name: 'versionTag', description: 'Version tag' })
+  @ApiParam({ name: 'versionTag', description: 'Version tag to publish' })
   @ApiResponse({
     status: 200,
-    description: 'Publish request processed.',
+    description: 'Publish request submitted.',
     type: CreatePromptAssetVersionDto,
   })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 403, description: 'Forbidden Access to Project.' })
-  @ApiResponse({ status: 404, description: 'Resource not found.' })
-  @HttpCode(HttpStatus.OK)
-  requestPublish(
+  @ApiResponse({
+    status: 404,
+    description: 'Project, Asset, or Version not found.',
+  })
+  async requestPublish(
     @Param('projectId') projectId: string,
     @Param('promptId') promptId: string,
     @Param('assetKey') assetKey: string,
     @Param('versionTag') versionTag: string,
-    @Request() req: any,
+    @Request() req: RequestWithUser,
   ): Promise<PromptAssetVersion> {
-    const requesterId = req.user.userId;
-    return this.service.requestPublish(
+    this.logger.debug(
+      `[requestPublish] Received request for projectId: ${projectId}, promptId: ${promptId}, assetKey: ${assetKey}, versionTag: ${versionTag}`,
+    );
+    const version = await this.service.findOneByTag(
       projectId,
       promptId,
       assetKey,
       versionTag,
-      requesterId,
+    );
+    return this.service.requestPublish(
+      version.id,
+      projectId,
+      req.user.userId,
+      req.user.tenantId,
     );
   }
 
   @Post(':versionTag/unpublish')
-  @ApiOperation({ summary: 'Unpublish an asset version from the marketplace' })
+  @ApiOperation({
+    summary: 'Unpublish a specific prompt asset version',
+  })
   @ApiParam({
     name: 'projectId',
     description: 'ID of the Project the Prompt belongs to',
   })
   @ApiParam({ name: 'promptId', description: 'ID (slug) of the Prompt' })
   @ApiParam({ name: 'assetKey', description: 'Key of the PromptAsset' })
-  @ApiParam({ name: 'versionTag', description: 'Version tag' })
+  @ApiParam({ name: 'versionTag', description: 'Version tag to unpublish' })
   @ApiResponse({
     status: 200,
     description: 'Version unpublished.',
@@ -278,15 +302,24 @@ export class PromptAssetVersionController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 403, description: 'Forbidden Access to Project.' })
-  @ApiResponse({ status: 404, description: 'Resource not found.' })
-  @HttpCode(HttpStatus.OK)
+  @ApiResponse({
+    status: 404,
+    description: 'Project, Asset, or Version not found.',
+  })
   unpublish(
     @Param('projectId') projectId: string,
     @Param('promptId') promptId: string,
     @Param('assetKey') assetKey: string,
     @Param('versionTag') versionTag: string,
-    @Request() req: any,
   ): Promise<PromptAssetVersion> {
-    return this.service.unpublish(projectId, promptId, assetKey, versionTag);
+    this.logger.debug(
+      `[unpublish] Received request for projectId: ${projectId}, promptId: ${promptId}, assetKey: ${assetKey}, versionTag: ${versionTag}`,
+    );
+    return this.service.unpublish(
+      projectId,
+      promptId,
+      assetKey,
+      versionTag,
+    );
   }
 }

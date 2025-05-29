@@ -422,7 +422,8 @@ async function main() {
             description: 'A general prompt to house default project assets.',
             projectId: defaultProject.id,
             tenantId: defaultTenant.id,
-            type: 'USER'
+            type: 'USER',
+            ownerUserId: testUser.id
         },
     });
 }

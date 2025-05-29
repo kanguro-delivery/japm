@@ -445,28 +445,42 @@ async function main() {
     const defaultLanguageCode = process.env.DEFAULT_LANGUAGE_CODE || 'en-US';
     console.log(`Using default language code: ${defaultLanguageCode}`);
 
-    // Find necessary base data
-    const testUser = await prisma.user.findUniqueOrThrow({
-        where: { email: 'test@example.com' },
-        select: { id: true, tenantId: true }
-    });
-    const tenantId = testUser.tenantId;
-
-    // Create Code Generation Project
-    const codegenProject = await prisma.project.upsert({
-        where: { id: 'codegen-examples' },
-        update: {
-            name: 'Code Generation Examples',
-            description: 'Collection of example prompts for code generation',
-            ownerUserId: testUser.id
-        },
+    // Crear tenant por defecto
+    const defaultTenant = await prisma.tenant.upsert({
+        where: { id: 'default-tenant' },
+        update: {},
         create: {
-            id: 'codegen-examples',
-            name: 'Code Generation Examples',
-            description: 'Collection of example prompts for code generation',
-            owner: { connect: { id: testUser.id } },
-            tenant: { connect: { id: tenantId } }
+            id: 'default-tenant',
+            name: 'Default Tenant',
+            marketplaceRequiresApproval: true,
         }
+    });
+
+    // Crear usuario de prueba
+    const hashedPassword = await bcrypt.hash('password123', SALT_ROUNDS);
+    const testUser = await prisma.user.upsert({
+        where: { email: 'test@example.com' },
+        update: { name: 'Test User', password: hashedPassword, role: 'admin' },
+        create: {
+            email: 'test@example.com',
+            name: 'Test User',
+            password: hashedPassword,
+            tenant: { connect: { id: defaultTenant.id } },
+            role: 'admin'
+        },
+    });
+
+    // Crear proyecto de generación de código
+    const codegenProject = await prisma.project.upsert({
+        where: { id: 'codegen-project' },
+        update: { name: 'Code Generation Project', description: 'Project for code generation examples.' },
+        create: {
+            id: 'codegen-project',
+            name: 'Code Generation Project',
+            description: 'Project for code generation examples.',
+            owner: { connect: { id: testUser.id } },
+            tenant: { connect: { id: defaultTenant.id } },
+        },
     });
     console.log(`Upserted Project: ${codegenProject.name}`);
 
@@ -581,9 +595,10 @@ async function main() {
                         name: slugify(prompt.name),
                         description: prompt.description,
                         projectId: codegenProject.id,
-                        tenantId: tenantId,
-                        type: prompt.type
-                    }
+                        tenantId: defaultTenant.id,
+                        type: prompt.type,
+                        ownerUserId: testUser.id
+                    } as any
                 });
             } else {
                 // Create new prompt
@@ -593,9 +608,10 @@ async function main() {
                         name: slugify(prompt.name),
                         description: prompt.description,
                         projectId: codegenProject.id,
-                        tenantId: tenantId,
-                        type: prompt.type
-                    }
+                        tenantId: defaultTenant.id,
+                        type: prompt.type,
+                        ownerUserId: testUser.id
+                    } as any
                 });
             }
 

@@ -40,7 +40,7 @@ import { Logger } from '@nestjs/common';
 export class PromptTranslationController {
   private readonly logger = new Logger(PromptTranslationController.name);
 
-  constructor(private readonly service: PromptTranslationService) { }
+  constructor(private readonly service: PromptTranslationService) {}
 
   @Post()
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))

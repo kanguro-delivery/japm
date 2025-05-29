@@ -7,14 +7,20 @@ import { CreateCulturalDataDto } from './dto/create-cultural-data.dto';
 import { UpdateCulturalDataDto } from './dto/update-cultural-data.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, CulturalData } from '@prisma/client';
+import { AuditLoggerService } from '../common/services/audit-logger.service';
 
 @Injectable()
 export class CulturalDataService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private auditLogger: AuditLoggerService,
+  ) {}
 
   async create(
     createDto: CreateCulturalDataDto,
     projectId: string,
+    userId: string,
+    tenantId: string,
   ): Promise<CulturalData> {
     const { key, regionId: regionLanguageCode, ...restData } = createDto;
 
@@ -34,7 +40,7 @@ export class CulturalDataService {
     }
 
     try {
-      return await this.prisma.culturalData.create({
+      const culturalData = await this.prisma.culturalData.create({
         data: {
           ...restData,
           key: key,
@@ -43,6 +49,16 @@ export class CulturalDataService {
         },
         include: { region: true },
       });
+
+      this.auditLogger.logCreation(
+        { userId, tenantId, projectId },
+        'CULTURAL_DATA',
+        culturalData.id,
+        key,
+        { key, regionLanguageCode, ...restData },
+      );
+
+      return culturalData;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -91,6 +107,8 @@ export class CulturalDataService {
     key: string,
     updateDto: UpdateCulturalDataDto,
     projectId: string,
+    userId: string,
+    tenantId: string,
   ): Promise<CulturalData> {
     // 1. Verificar que existe y obtener su CUID id
     const currentData = await this.findOne(key, projectId); // Esto ya valida que pertenece al proyecto
@@ -110,11 +128,23 @@ export class CulturalDataService {
     }
 
     try {
-      return await this.prisma.culturalData.update({
+      const updatedData = await this.prisma.culturalData.update({
         where: { id: currentData.id }, // Actualizar por CUID id
         data: restUpdateData,
         include: { region: true },
       });
+
+      this.auditLogger.logUpdate(
+        { userId, tenantId, projectId },
+        'CULTURAL_DATA',
+        updatedData.id,
+        key,
+        { ...currentData },
+        { ...updatedData },
+        Object.keys(restUpdateData),
+      );
+
+      return updatedData;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -133,7 +163,12 @@ export class CulturalDataService {
   }
 
   // El 'id' en la ruta ahora será la 'key'
-  async remove(key: string, projectId: string): Promise<CulturalData> {
+  async remove(
+    key: string,
+    projectId: string,
+    userId: string,
+    tenantId: string,
+  ): Promise<CulturalData> {
     // 1. Verificar que existe y obtener el objeto completo para devolverlo
     const culturalDataToDelete = await this.findOne(key, projectId); // Valida pertenencia al proyecto
 
@@ -141,6 +176,15 @@ export class CulturalDataService {
       await this.prisma.culturalData.delete({
         where: { id: culturalDataToDelete.id }, // Eliminar por CUID id
       });
+
+      this.auditLogger.logDeletion(
+        { userId, tenantId, projectId },
+        'CULTURAL_DATA',
+        culturalDataToDelete.id,
+        key,
+        { ...culturalDataToDelete },
+      );
+
       return culturalDataToDelete;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {

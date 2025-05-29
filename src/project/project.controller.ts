@@ -24,22 +24,29 @@ import {
   ApiParam,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { Project, Prisma } from '@prisma/client'; // Import Prisma
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // Importar JwtAuthGuard
-import { Logger } from '@nestjs/common'; // Import Logger
+import { Project, Prisma, User } from '@prisma/client';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Logger } from '@nestjs/common';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import { CacheKey, CacheTTL } from '@nestjs/cache-manager';
 import { ProjectDto } from './dto/project.dto';
 
+interface RequestWithUser extends Request {
+  user: User & {
+    userId: string;
+    tenantId: string;
+  };
+}
+
 @ApiTags('Projects')
 @ApiBearerAuth()
 @Controller('projects')
 export class ProjectController {
-  private readonly logger = new Logger(ProjectController.name); // Add Logger instance
+  private readonly logger = new Logger(ProjectController.name);
 
-  constructor(private readonly projectService: ProjectService) {}
+  constructor(private readonly projectService: ProjectService) { }
 
   @UseGuards(JwtAuthGuard)
   @Get('mine')
@@ -62,7 +69,7 @@ export class ProjectController {
     status: 403,
     description: 'Acceso denegado - Información de tenant no disponible',
   })
-  findMine(@Request() req): Promise<Pick<Project, 'id' | 'name'>[]> {
+  findMine(@Request() req: RequestWithUser): Promise<Pick<Project, 'id' | 'name'>[]> {
     const userId = req.user.userId;
     const tenantId = req.user.tenantId;
     if (!tenantId) {
@@ -106,13 +113,13 @@ export class ProjectController {
   })
   create(
     @Body() createProjectDto: CreateProjectDto,
-    @Req() req: any,
+    @Req() req: RequestWithUser,
   ): Promise<ProjectDto> {
     this.logger.debug(
       `[create] Received POST request. Body: ${JSON.stringify(createProjectDto, null, 2)}`,
     );
-    const userId = req.user?.userId;
-    const tenantId = req.user?.tenantId;
+    const userId = req.user.userId;
+    const tenantId = req.user.tenantId;
     if (!userId || !tenantId) {
       this.logger.error(
         'User ID or Tenant ID not found in authenticated user request for project creation',
@@ -141,8 +148,8 @@ export class ProjectController {
   })
   @CacheKey('projects')
   @CacheTTL(3600)
-  findAll(@Req() req: any): Promise<ProjectDto[]> {
-    const tenantId = req.user?.tenantId;
+  findAll(@Req() req: RequestWithUser): Promise<ProjectDto[]> {
+    const tenantId = req.user.tenantId;
     if (!tenantId) {
       this.logger.error('TenantId not found in authenticated user request');
       throw new UnauthorizedException('User tenant information is missing');
@@ -188,7 +195,7 @@ export class ProjectController {
   })
   @CacheKey('project')
   @CacheTTL(3600)
-  findOne(@Param('id') id: string, @Req() req: any): Promise<ProjectDto> {
+  findOne(@Param('id') id: string, @Req() req: RequestWithUser): Promise<ProjectDto> {
     const tenantId = req.user.tenantId;
     if (!tenantId) {
       this.logger.error(
@@ -200,12 +207,10 @@ export class ProjectController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.TENANT_ADMIN)
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Update project',
-    description:
-      "Updates an existing project's information. Accessible by global admins or tenant admins.",
+    description: 'Updates an existing project by ID.',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -214,92 +219,62 @@ export class ProjectController {
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description:
-      'Project not found - The specified ID does not exist for this tenant',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid input data - Check the request body format',
-  })
-  @ApiResponse({
-    status: HttpStatus.CONFLICT,
-    description:
-      'Project name already exists - The provided name is already in use',
+    description: 'Project not found',
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
     description: 'Unauthorized - Invalid or expired token',
-  })
-  @ApiResponse({
-    status: HttpStatus.FORBIDDEN,
-    description: 'Forbidden - Insufficient permissions to update projects',
-  })
-  @ApiParam({
-    name: 'id',
-    type: 'string',
-    format: 'uuid',
-    description: 'Unique project identifier to update (UUID)',
-    required: true,
   })
   update(
     @Param('id') id: string,
     @Body() updateProjectDto: UpdateProjectDto,
-    @Req() req: any,
+    @Req() req: RequestWithUser,
   ): Promise<ProjectDto> {
     this.logger.debug(
-      `[update] Received PATCH for projectId: ${id}. Body: ${JSON.stringify(updateProjectDto, null, 2)}`,
+      `[update] Received PATCH request for project ${id}. Body: ${JSON.stringify(
+        updateProjectDto,
+        null,
+        2,
+      )}`,
     );
     const tenantId = req.user.tenantId;
-    if (!tenantId) {
+    const userId = req.user.userId;
+    if (!tenantId || !userId) {
       this.logger.error(
-        'TenantId not found in authenticated user request for update',
+        'TenantId or UserId not found in authenticated user request for update',
       );
-      throw new UnauthorizedException('User tenant information is missing');
+      throw new UnauthorizedException('User or tenant information is missing');
     }
-    return this.projectService.update(id, updateProjectDto, tenantId);
+    return this.projectService.update(id, updateProjectDto, tenantId, userId);
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.TENANT_ADMIN)
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Delete project',
-    description:
-      'Permanently deletes a project. This is a destructive operation that requires admin privileges.',
+    description: 'Deletes a project by ID.',
   })
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
-    description: 'Project successfully deleted',
+    description: 'Project deleted successfully',
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description:
-      'Project not found - The specified ID does not exist for this tenant',
+    description: 'Project not found',
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
     description: 'Unauthorized - Invalid or expired token',
   })
-  @ApiResponse({
-    status: HttpStatus.FORBIDDEN,
-    description: 'Forbidden - Insufficient permissions to delete projects',
-  })
-  @ApiParam({
-    name: 'id',
-    type: 'string',
-    format: 'uuid',
-    description: 'Unique project identifier to delete (UUID)',
-    required: true,
-  })
-  async remove(@Param('id') id: string, @Req() req: any): Promise<void> {
+  async remove(@Param('id') id: string, @Req() req: RequestWithUser): Promise<void> {
     const tenantId = req.user.tenantId;
-    if (!tenantId) {
+    const userId = req.user.userId;
+    if (!tenantId || !userId) {
       this.logger.error(
-        'TenantId not found in authenticated user request for remove',
+        'TenantId or UserId not found in authenticated user request for remove',
       );
-      throw new UnauthorizedException('User tenant information is missing');
+      throw new UnauthorizedException('User or tenant information is missing');
     }
-    await this.projectService.remove(id, tenantId);
+    await this.projectService.remove(id, tenantId, userId);
   }
 }

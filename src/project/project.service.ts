@@ -9,6 +9,7 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectDto } from './dto/project.dto';
 import { Logger } from '@nestjs/common';
 import { Project, Prisma } from '@prisma/client';
+import { AuditLoggerService } from '../common/services/audit-logger.service';
 
 // Función simple para generar slugs
 function slugify(text: string): string {
@@ -30,7 +31,10 @@ type ProjectWithRegions = Prisma.ProjectGetPayload<{
 export class ProjectService {
   private readonly logger = new Logger(ProjectService.name);
 
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private auditLogger: AuditLoggerService,
+  ) {}
 
   private transformProject(project: Project): ProjectDto {
     return {
@@ -69,6 +73,15 @@ export class ProjectService {
           owner: { connect: { id: userId } },
         },
       });
+
+      this.auditLogger.logCreation(
+        { userId, tenantId, projectId: project.id },
+        'PROJECT',
+        project.id,
+        project.name,
+        { name: project.name, description: project.description },
+      );
+
       return this.transformProject(project);
     } catch (error) {
       if (
@@ -134,18 +147,30 @@ export class ProjectService {
     id: string,
     updateProjectDto: UpdateProjectDto,
     tenantId: string,
+    userId: string,
   ): Promise<ProjectDto> {
-    await this.findOne(id, tenantId);
+    const project = await this.findOne(id, tenantId);
 
     try {
-      const project = await this.prisma.project.update({
+      const updatedProject = await this.prisma.project.update({
         where: {
           id,
           tenantId,
         },
         data: updateProjectDto,
       });
-      return this.transformProject(project);
+
+      this.auditLogger.logUpdate(
+        { userId, tenantId, projectId: id },
+        'PROJECT',
+        id,
+        updatedProject.name,
+        { name: project.name, description: project.description },
+        { name: updatedProject.name, description: updatedProject.description },
+        Object.keys(updateProjectDto),
+      );
+
+      return this.transformProject(updatedProject);
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -167,12 +192,22 @@ export class ProjectService {
     }
   }
 
-  async remove(id: string, tenantId: string): Promise<void> {
+  async remove(id: string, tenantId: string, userId: string): Promise<void> {
+    const project = await this.findOne(id, tenantId);
+
     await this.prisma.project.delete({
       where: {
         id,
         tenantId,
       },
     });
+
+    this.auditLogger.logDeletion(
+      { userId, tenantId, projectId: id },
+      'PROJECT',
+      id,
+      project.name,
+      { name: project.name, description: project.description },
+    );
   }
 }

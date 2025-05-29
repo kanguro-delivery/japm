@@ -17,7 +17,7 @@ export class AuthService {
   constructor(
     private userService: UserService,
     private jwtService: JwtService,
-  ) {}
+  ) { }
 
   // Used by LocalStrategy
   async validateUser(email: string, pass: string): Promise<User | null> {
@@ -44,25 +44,23 @@ export class AuthService {
 
   // Used by AuthController /register
   async register(registerDto: RegisterDto): Promise<Omit<User, 'password'>> {
-    // Reuse the UserService create method which already hashes the password
     try {
       const newUser = await this.userService.create(
         registerDto,
         DEFAULT_TENANT_ID,
+        'system' // Registro público, sin admin real
       );
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password, ...result } = newUser; // Do not return password
+      const { password, ...result } = newUser;
       return result;
     } catch (error) {
-      // Re-throw known exceptions from userService.create
       if (error instanceof ConflictException) {
         throw error;
       }
-      // Other unexpected errors - solo loggear si no estamos en modo test
       if (process.env.NODE_ENV !== 'test') {
         console.error('Error during user registration:', error);
       }
-      throw new Error('Failed to register user.'); // Generic error message
+      throw new Error('Failed to register user.');
     }
   }
 

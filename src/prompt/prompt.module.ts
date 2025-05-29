@@ -12,6 +12,7 @@ import { TagModule } from '../tag/tag.module';
 import { EnvironmentModule } from '../environment/environment.module';
 import { LoggingModule } from '../common/logging.module';
 import { CommonModule } from '../common/common.module';
+import { ActivityLogModule } from '../services/activity-log.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { CommonModule } from '../common/common.module';
     EnvironmentModule,
     LoggingModule,
     CommonModule,
+    ActivityLogModule
   ],
   controllers: [PromptController],
   providers: [PromptService],

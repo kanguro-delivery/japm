@@ -23,7 +23,7 @@ export class PromptTranslationService {
     private prisma: PrismaService,
     private servePromptService: ServePromptService,
     private promptVersionService: PromptVersionService,
-  ) { }
+  ) {}
 
   async create(
     projectId: string,
@@ -107,7 +107,9 @@ export class PromptTranslationService {
     }
 
     if (query?.processed) {
-      this.logger.debug('Processing translation with all references and variables');
+      this.logger.debug(
+        'Processing translation with all references and variables',
+      );
       try {
         const variables = query.variables ? JSON.parse(query.variables) : {};
         const result = await this.servePromptService.executePromptVersion(
@@ -138,7 +140,8 @@ export class PromptTranslationService {
         translation.promptText = result.processedPrompt;
         (translation as any).metadata = {
           processed: true,
-          unresolvedPromptPlaceholders: result.metadata?.unresolvedPromptPlaceholders || [],
+          unresolvedPromptPlaceholders:
+            result.metadata?.unresolvedPromptPlaceholders || [],
         };
       } catch (error) {
         this.logger.error(
