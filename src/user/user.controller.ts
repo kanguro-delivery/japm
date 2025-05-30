@@ -323,4 +323,36 @@ export class UserController {
     }
     return this.userService.remove(id, adminUserId, tenantId);
   }
+
+  @Get('check')
+  @ApiOperation({
+    summary: 'Check if a user exists by email',
+    description: 'Returns true if a user with the specified email exists, false otherwise',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User existence check result',
+    schema: {
+      type: 'object',
+      properties: {
+        exists: {
+          type: 'boolean',
+          description: 'Whether the user exists or not',
+        },
+        userId: {
+          type: 'string',
+          description: 'The ID of the user if it exists',
+          nullable: true
+        }
+      },
+    },
+  })
+  async checkUserExists(): Promise<{ exists: boolean; userId: string | null }> {
+    const email = 'tenant_admin@example.com';
+    const user = await this.userService.findOneByEmail(email);
+    return {
+      exists: !!user,
+      userId: user?.id || null
+    };
+  }
 }

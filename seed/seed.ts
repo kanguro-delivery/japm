@@ -121,20 +121,6 @@ async function main() {
     });
     console.log(`Upserted admin user: ${testUser.name} (ID: ${testUser.id}, Tenant: ${testUser.tenantId})`);
 
-    // Prompt Consumer user
-    const promptConsumerUser = await prisma.user.upsert({
-        where: { email: 'prompt-consumer@example.com' },
-        update: { name: 'Prompt Consumer', password: hashedPassword, role: 'prompt_consumer' as Role },
-        create: {
-            email: 'prompt-consumer@example.com',
-            name: 'Prompt Consumer',
-            password: hashedPassword,
-            tenant: { connect: { id: defaultTenant.id } },
-            role: 'prompt_consumer' as Role
-        },
-    });
-    console.log(`Upserted prompt consumer user: ${promptConsumerUser.name} (ID: ${promptConsumerUser.id}, Tenant: ${promptConsumerUser.tenantId})`);
-
     // Tenant Admin user
     const tenantAdminUser = await prisma.user.upsert({
         where: { email: 'tenant_admin@example.com' },

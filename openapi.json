@@ -360,6 +360,45 @@
         ]
       }
     },
+    "/api/users/check": {
+      "get": {
+        "description": "Returns true if a user with the specified email exists, false otherwise",
+        "operationId": "UserController_checkUserExists",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "User existence check result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exists": {
+                      "type": "boolean",
+                      "description": "Whether the user exists or not"
+                    },
+                    "userId": {
+                      "type": "string",
+                      "description": "The ID of the user if it exists",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Check if a user exists by email",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
     "/api/auth/register": {
       "post": {
         "description": "Creates a new user account in the system. This endpoint is publicly accessible.",

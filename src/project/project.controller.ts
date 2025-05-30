@@ -35,7 +35,7 @@ import { ProjectDto } from './dto/project.dto';
 
 interface RequestWithUser extends Request {
   user: User & {
-    userId: string;
+    id: string;
     tenantId: string;
   };
 }
@@ -70,7 +70,7 @@ export class ProjectController {
     description: 'Acceso denegado - Información de tenant no disponible',
   })
   findMine(@Request() req: RequestWithUser): Promise<Pick<Project, 'id' | 'name'>[]> {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const tenantId = req.user.tenantId;
     if (!tenantId) {
       this.logger.error(
@@ -118,7 +118,7 @@ export class ProjectController {
     this.logger.debug(
       `[create] Received POST request. Body: ${JSON.stringify(createProjectDto, null, 2)}`,
     );
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const tenantId = req.user.tenantId;
     if (!userId || !tenantId) {
       this.logger.error(
@@ -238,7 +238,7 @@ export class ProjectController {
       )}`,
     );
     const tenantId = req.user.tenantId;
-    const userId = req.user.userId;
+    const userId = req.user.id;
     if (!tenantId || !userId) {
       this.logger.error(
         'TenantId or UserId not found in authenticated user request for update',
@@ -268,7 +268,7 @@ export class ProjectController {
   })
   async remove(@Param('id') id: string, @Req() req: RequestWithUser): Promise<void> {
     const tenantId = req.user.tenantId;
-    const userId = req.user.userId;
+    const userId = req.user.id;
     if (!tenantId || !userId) {
       this.logger.error(
         'TenantId or UserId not found in authenticated user request for remove',
