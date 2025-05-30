@@ -108,12 +108,11 @@
     },
     "/api/users": {
       "post": {
-        "description": "Creates a new user within the authenticated admin's tenant. Requires admin privileges.",
+        "description": "Creates a new user in the system. For tenant_admins, can optionally specify a tenantId to create the user in that tenant.",
         "operationId": "UserController_create",
         "parameters": [],
         "requestBody": {
           "required": true,
-          "description": "User data to create",
           "content": {
             "application/json": {
               "schema": {
@@ -124,7 +123,7 @@
         },
         "responses": {
           "201": {
-            "description": "User successfully created",
+            "description": "User created successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -140,7 +139,7 @@
             "description": "Unauthorized - Invalid or expired token"
           },
           "403": {
-            "description": "Forbidden - Admin role required"
+            "description": "Forbidden - Admin or tenant admin role required"
           }
         },
         "security": [
@@ -154,9 +153,30 @@
         ]
       },
       "get": {
-        "description": "Retrieves a list of all users in the system. Requires admin privileges.",
+        "description": "Retrieves a list of users. For tenant_admins, can optionally specify a tenantId to list users from that tenant.",
         "operationId": "UserController_findAll",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "description": "Optional tenant ID to filter users. Only used if the requesting user is a tenant_admin. Can be a UUID or \"default-tenant\"",
+            "schema": {
+              "pattern": "/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^default-tenant$/",
+              "type": "string"
+            }
+          },
+          {
+            "required": false,
+            "description": "Optional tenant ID to filter users. Only used if the requesting user is a tenant_admin. Can be a UUID or \"default-tenant\"",
+            "name": "tenantId",
+            "in": "query",
+            "schema": {
+              "pattern": "/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^default-tenant$/",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "List of users retrieved successfully",
@@ -175,7 +195,7 @@
             "description": "Unauthorized - Invalid or expired token"
           },
           "403": {
-            "description": "Forbidden - Admin role required"
+            "description": "Forbidden - Admin role required or invalid tenant access"
           }
         },
         "security": [
@@ -1834,9 +1854,8 @@
             "name": "tenantId",
             "required": true,
             "in": "path",
-            "description": "Unique tenant identifier (UUID)",
+            "description": "Unique tenant identifier (UUID or \"default-tenant\")",
             "schema": {
-              "format": "uuid",
               "type": "string"
             }
           }
@@ -1873,7 +1892,7 @@
         ]
       },
       "patch": {
-        "description": "Updates an existing tenant's information. Accessible by global admins or tenant admins of the specified tenant.",
+        "description": "Updates an existing tenant's information. Accessible by global admins or tenant admins.",
         "operationId": "TenantController_update",
         "parameters": [
           {
@@ -1915,7 +1934,7 @@
             "description": "Unauthorized - Invalid or expired token"
           },
           "403": {
-            "description": "Forbidden - Insufficient permissions to update this tenant"
+            "description": "Forbidden - Admin or tenant admin role required"
           },
           "404": {
             "description": "Tenant not found - The specified ID does not exist"
@@ -1935,7 +1954,7 @@
         ]
       },
       "delete": {
-        "description": "Permanently deletes a tenant from the system. This is a destructive operation that requires admin or tenant admin privileges.",
+        "description": "Permanently deletes a tenant from the system. Accessible by global admins or tenant admins.",
         "operationId": "TenantController_remove",
         "parameters": [
           {
@@ -1950,8 +1969,15 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "Tenant successfully deleted"
+          "200": {
+            "description": "Tenant deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDto"
+                }
+              }
+            }
           },
           "401": {
             "description": "Unauthorized - Invalid or expired token"
@@ -6121,6 +6147,11 @@
               "prompt_consumer"
             ],
             "default": "user"
+          },
+          "tenantId": {
+            "type": "string",
+            "pattern": "/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^default-tenant$/",
+            "description": "Optional tenant ID to create the user in. Only used if the requesting user is a tenant_admin. Can be a UUID or \"default-tenant\""
           }
         },
         "required": [

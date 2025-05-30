@@ -5,6 +5,7 @@ import {
   IsOptional,
   MinLength,
   IsEnum,
+  Matches,
 } from 'class-validator';
 import { Role } from '@prisma/client';
 
@@ -38,6 +39,17 @@ export class CreateUserDto {
   @IsOptional()
   @IsEnum(Role)
   role?: Role;
+
+  @ApiPropertyOptional({
+    description: 'Optional tenant ID to create the user in. Only used if the requesting user is a tenant_admin. Can be a UUID or "default-tenant"',
+    type: String,
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^default-tenant$/, {
+    message: 'tenantId must be a valid UUID or "default-tenant"',
+  })
+  tenantId?: string;
 
   /* // tenantId should come from the authenticated admin user (req.user.tenantId)
     @ApiProperty({ example: 'tenant-cuid-xxxx', description: 'ID del tenant al que pertenece este usuario' })

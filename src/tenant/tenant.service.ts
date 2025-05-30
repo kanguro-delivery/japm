@@ -229,6 +229,19 @@ export class TenantService {
 
       return deletedTenant;
     } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2003'
+      ) {
+        this.logger.error(
+          `Foreign key constraint violation when deleting tenant ID '${id}': ${error.message}`,
+          error.stack,
+          error.meta,
+        );
+        throw new ConflictException(
+          'Cannot delete this tenant because it has associated records. Please delete or reassign all related records first.',
+        );
+      }
       this.logger.error(
         `Error removing tenant ID '${id}': ${error.message}`,
         error.stack,

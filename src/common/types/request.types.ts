@@ -5,11 +5,10 @@ import { Role } from 'src/auth/enums/role.enum';
  * User data attached to request after JWT authentication
  */
 export interface AuthenticatedUser {
-  userId: string;
+  id: string;
   email: string;
   tenantId: string;
-  sub: string; // JWT subject (same as userId)
-  role?: Role | Role[];
+  role: Role;
 }
 
 /**
@@ -23,5 +22,5 @@ export interface AuthenticatedRequest extends Request {
  * Type guard to check if request has authenticated user
  */
 export function isAuthenticatedRequest(req: any): req is AuthenticatedRequest {
-  return req && req.user && typeof req.user.userId === 'string';
+  return req && req.user && typeof req.user.id === 'string';
 }

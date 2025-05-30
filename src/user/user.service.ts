@@ -15,14 +15,14 @@ export class UserService {
   constructor(
     private prisma: PrismaService,
     private auditLogger: AuditLoggerService,
-  ) {}
+  ) { }
 
   async create(
     createUserDto: CreateUserDto,
     tenantId: string,
     adminUserId: string,
   ): Promise<User> {
-    const { password, ...rest } = createUserDto;
+    const { password, tenantId: dtoTenantId, ...rest } = createUserDto;
     const hashedPassword = await bcrypt.hash(password, 10);
     try {
       const user = await this.prisma.user.create({
@@ -73,8 +73,12 @@ export class UserService {
     }
   }
 
-  findAll(): Promise<User[]> {
-    return this.prisma.user.findMany();
+  findAll(tenantId: string): Promise<User[]> {
+    return this.prisma.user.findMany({
+      where: {
+        tenantId: tenantId
+      }
+    });
   }
 
   async findOneById(id: string): Promise<User> {

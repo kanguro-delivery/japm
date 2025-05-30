@@ -11,10 +11,15 @@ import {
   UseGuards,
   Request,
   UnauthorizedException,
+  Query,
+  BadRequestException,
+  ParseUUIDPipe,
+  HttpStatus,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ListUsersDto } from './dto/list-users.dto';
 import {
   ApiTags,
   ApiOperation,
@@ -22,6 +27,7 @@ import {
   ApiParam,
   ApiBody,
   ApiBearerAuth,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { User } from '@prisma/client'; // Import User type from Prisma
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -29,6 +35,15 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import { Logger } from '@nestjs/common'; // Import Logger
+
+interface RequestWithUser extends Request {
+  user?: {
+    id: string;
+    email: string;
+    tenantId: string;
+    role: Role;
+  };
+}
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -41,57 +56,76 @@ export class UserController {
   constructor(private readonly userService: UserService) { }
 
   @Post()
-  @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+  @UsePipes(new ValidationPipe({ transform: true }))
   @ApiOperation({
     summary: 'Create new user',
     description:
-      "Creates a new user within the authenticated admin's tenant. Requires admin privileges.",
-  })
-  @ApiBody({
-    type: CreateUserDto,
-    description: 'User data to create',
+      'Creates a new user in the system. For tenant_admins, can optionally specify a tenantId to create the user in that tenant.',
   })
   @ApiResponse({
-    status: 201,
-    description: 'User successfully created',
+    status: HttpStatus.CREATED,
+    description: 'User created successfully',
     type: CreateUserDto,
   })
   @ApiResponse({
-    status: 400,
+    status: HttpStatus.BAD_REQUEST,
     description: 'Invalid input data - Check the request body format',
   })
   @ApiResponse({
-    status: 401,
+    status: HttpStatus.UNAUTHORIZED,
     description: 'Unauthorized - Invalid or expired token',
   })
   @ApiResponse({
-    status: 403,
-    description: 'Forbidden - Admin role required',
+    status: HttpStatus.FORBIDDEN,
+    description: 'Forbidden - Admin or tenant admin role required',
   })
-  create(@Request() req, @Body() createUserDto: CreateUserDto): Promise<User> {
-    this.logger.debug(
-      `[create] Received POST request. Body: ${JSON.stringify(createUserDto, null, 2)}`,
-    );
-    const tenantId = req.user?.tenantId;
-    const adminUserId = req.user?.id;
-
-    if (!tenantId || !adminUserId) {
-      this.logger.error(
-        'Tenant ID or Admin User ID not found in authenticated admin user request for user creation',
-      );
-      throw new UnauthorizedException(
-        'Admin user information is missing',
-      );
+  create(@Request() req: RequestWithUser, @Body() createUserDto: CreateUserDto): Promise<User> {
+    const user = req.user;
+    if (!user) {
+      this.logger.error('User not found in request for user creation');
+      throw new UnauthorizedException('User not authenticated');
     }
-    return this.userService.create(createUserDto, tenantId, adminUserId);
+
+    // Si el usuario es tenant_admin y especifica un tenantId
+    if (user.role === Role.TENANT_ADMIN && createUserDto.tenantId) {
+      // Si es default-tenant, lo permitimos directamente
+      if (createUserDto.tenantId === 'default-tenant') {
+        return this.userService.create(createUserDto, createUserDto.tenantId, user.id);
+      }
+
+      // Para el resto de IDs, validamos que sea un UUID válido
+      try {
+        new ParseUUIDPipe().transform(createUserDto.tenantId, {
+          type: 'param',
+          data: 'tenantId',
+        });
+        return this.userService.create(createUserDto, createUserDto.tenantId, user.id);
+      } catch {
+        throw new BadRequestException(
+          'Invalid tenant ID format. Must be a valid UUID or "default-tenant"',
+        );
+      }
+    }
+
+    // Para cualquier otro caso, usamos el tenantId del usuario autenticado
+    const tenantId = user.tenantId;
+    if (!tenantId) {
+      this.logger.error(
+        'Tenant ID not found in authenticated admin user request for user creation',
+      );
+      throw new UnauthorizedException('Admin user tenant information is missing');
+    }
+    return this.userService.create(createUserDto, tenantId, user.id);
   }
 
   @Get()
+  @UsePipes(new ValidationPipe({ transform: true }))
   @ApiOperation({
     summary: 'Get all users',
     description:
-      'Retrieves a list of all users in the system. Requires admin privileges.',
+      'Retrieves a list of users. For tenant_admins, can optionally specify a tenantId to list users from that tenant.',
   })
+  @ApiQuery({ type: ListUsersDto })
   @ApiResponse({
     status: 200,
     description: 'List of users retrieved successfully',
@@ -103,10 +137,48 @@ export class UserController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden - Admin role required',
+    description: 'Forbidden - Admin role required or invalid tenant access',
   })
-  findAll(): Promise<User[]> {
-    return this.userService.findAll();
+  findAll(
+    @Request() req: RequestWithUser,
+    @Query() query: ListUsersDto,
+  ): Promise<User[]> {
+    const user = req.user;
+    if (!user) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+
+    const userTenantId = user.tenantId;
+    if (!userTenantId) {
+      this.logger.error(
+        'Tenant ID not found in authenticated user request for user listing',
+      );
+      throw new UnauthorizedException('User tenant information is missing');
+    }
+
+    // Si el usuario es tenant_admin y especificó un tenantId, usamos ese
+    if (user.role === Role.TENANT_ADMIN && query.tenantId) {
+      // Validación especial para el tenant por defecto
+      if (query.tenantId === 'default-tenant') {
+        return this.userService.findAll(query.tenantId);
+      }
+
+      // Para el resto de IDs, validamos que sea un UUID válido
+      try {
+        new ParseUUIDPipe().transform(query.tenantId, {
+          type: 'param',
+          data: 'tenantId',
+        });
+      } catch {
+        throw new BadRequestException(
+          'Invalid tenant ID format. Must be a valid UUID or "default-tenant"',
+        );
+      }
+      return this.userService.findAll(query.tenantId);
+    }
+
+    // Para cualquier otro caso, usamos el tenantId del usuario autenticado
+    return this.userService.findAll(userTenantId);
   }
 
   @Get(':id')

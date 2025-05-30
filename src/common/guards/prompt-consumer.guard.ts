@@ -36,7 +36,7 @@ export class PromptConsumerGuard implements CanActivate {
 
     if (!hasRequiredRole) {
       this.logger.warn(
-        `[PromptConsumerGuard] DENIED: User (ID: ${user.userId}, Tenant: ${user.tenantId}) has role(s) "${user.role}". Expected one of: "${allowedRoles.join(', ')}".`,
+        `[PromptConsumerGuard] DENIED: User (ID: ${user.id}, Tenant: ${user.tenantId}) has role(s) "${user.role}". Expected one of: "${allowedRoles.join(', ')}".`,
       );
       throw new ForbiddenException(
         `Access denied. Required roles are ${allowedRoles.join(', ')}.`,
@@ -44,7 +44,7 @@ export class PromptConsumerGuard implements CanActivate {
     }
 
     this.logger.log(
-      `[PromptConsumerGuard] GRANTED: User (ID: ${user.userId}, Tenant: ${user.tenantId}, Role(s): ${user.role}) to path ${path}`,
+      `[PromptConsumerGuard] GRANTED: User (ID: ${user.id}, Tenant: ${user.tenantId}, Role(s): ${user.role}) to path ${path}`,
     );
     return true;
   }

@@ -63,7 +63,7 @@ export class PromptController {
       createDto,
       projectId,
       req.user.tenantId,
-      req.user.userId
+      req.user.id
     );
   }
 
@@ -86,7 +86,7 @@ export class PromptController {
       updateDto,
       projectId,
       req.user.tenantId,
-      req.user.userId
+      req.user.id
     );
   }
 
@@ -109,7 +109,7 @@ export class PromptController {
       updateDto,
       projectId,
       req.user.tenantId,
-      req.user.userId
+      req.user.id
     );
   }
 
@@ -129,7 +129,7 @@ export class PromptController {
     await this.promptService.remove(
       id,
       projectId,
-      req.user.userId,
+      req.user.id,
       req.user.tenantId
     );
   }

@@ -69,7 +69,7 @@ class UserProfileResponse {
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   @Post('register')
   @ApiOperation({
@@ -151,8 +151,6 @@ export class AuthController {
     @Request() req: AuthenticatedRequest,
   ): Promise<Omit<User, 'password'>> {
     // JwtAuthGuard (via JwtStrategy) validated the token and attached data to req.user
-    // Assuming JwtStrategy.validate returns { userId: string, email: string }
-    // We need to get the full profile from the service
-    return this.authService.getProfile(req.user.userId);
+    return this.authService.getProfile(req.user.id);
   }
 }

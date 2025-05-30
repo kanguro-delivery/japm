@@ -71,28 +71,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       }
       this.logger.log(`User found for ID ${payload.sub}: ${user.email}`);
 
-      // Whatever you return here will be attached to request.user
-      // Return only necessary, non-sensitive information
-      const result = {
-        userId: payload.sub,
-        email: payload.email,
+      // Return the user object with id instead of userId
+      return {
+        id: user.id,
+        email: user.email,
         tenantId: user.tenantId,
         role: user.role,
       };
-      //this.logger.debug(`Validation successful. Returning user data for request.user: ${JSON.stringify(result)}`);
-      return result;
-      // Or you could return the full User object (without password) if needed:
-      // const { password, ...userResult } = user;
-      // return userResult;
     } catch (error) {
       this.logger.error(
         `Error during user lookup or validation for sub ${payload.sub}:`,
         error.stack || error,
       );
       if (error instanceof UnauthorizedException) {
-        throw error; // Re-throw specific unauthorized error
+        throw error;
       }
-      // Throw a generic one for other unexpected errors during validation
       throw new UnauthorizedException('Error validating user token.');
     }
   }

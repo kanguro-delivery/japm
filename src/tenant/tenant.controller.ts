@@ -9,10 +9,9 @@ import {
   UseGuards,
   ParseUUIDPipe,
   Req,
-  ForbiddenException,
-  HttpCode,
   HttpStatus,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { TenantService } from './tenant.service';
 import { CreateTenantDto, UpdateTenantDto, TenantDto } from './dto';
@@ -72,7 +71,7 @@ export class TenantController {
   })
   create(
     @Body() createTenantDto: CreateTenantDto,
-    @Req() req: RequestWithUser
+    @Req() req: RequestWithUser,
   ): Promise<TenantDto> {
     if (!req.user) {
       throw new UnauthorizedException('User not authenticated');
@@ -133,8 +132,7 @@ export class TenantController {
   @ApiParam({
     name: 'tenantId',
     type: 'string',
-    format: 'uuid',
-    description: 'Unique tenant identifier (UUID)',
+    description: 'Unique tenant identifier (UUID or "default-tenant")',
     required: true,
   })
   async findOne(
@@ -144,6 +142,24 @@ export class TenantController {
     if (!req.user) {
       throw new UnauthorizedException('User not authenticated');
     }
+
+    // Validación especial para el tenant por defecto
+    if (tenantId === 'default-tenant') {
+      return this.tenantService.findOne(tenantId);
+    }
+
+    // Para el resto de IDs, validamos que sea un UUID válido
+    try {
+      new ParseUUIDPipe().transform(tenantId, {
+        type: 'param',
+        data: 'tenantId',
+      });
+    } catch {
+      throw new BadRequestException(
+        'Invalid tenant ID format. Must be a valid UUID or "default-tenant"',
+      );
+    }
+
     return this.tenantService.findOne(tenantId);
   }
 
@@ -153,7 +169,7 @@ export class TenantController {
   @ApiOperation({
     summary: 'Update tenant',
     description:
-      "Updates an existing tenant's information. Accessible by global admins or tenant admins of the specified tenant.",
+      "Updates an existing tenant's information. Accessible by global admins or tenant admins.",
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -179,7 +195,7 @@ export class TenantController {
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'Forbidden - Insufficient permissions to update this tenant',
+    description: 'Forbidden - Admin or tenant admin role required',
   })
   @ApiParam({
     name: 'tenantId',
@@ -196,26 +212,21 @@ export class TenantController {
     if (!req.user) {
       throw new UnauthorizedException('User not authenticated');
     }
-    if (req.user.role === Role.TENANT_ADMIN && req.user.tenantId !== tenantId) {
-      throw new ForbiddenException(
-        'You are not authorized to update this tenant.',
-      );
-    }
     return this.tenantService.update(tenantId, updateTenantDto, req.user.id);
   }
 
   @Delete(':tenantId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TENANT_ADMIN)
-  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete tenant',
     description:
-      'Permanently deletes a tenant from the system. This is a destructive operation that requires admin or tenant admin privileges.',
+      'Permanently deletes a tenant from the system. Accessible by global admins or tenant admins.',
   })
   @ApiResponse({
-    status: HttpStatus.NO_CONTENT,
-    description: 'Tenant successfully deleted',
+    status: HttpStatus.OK,
+    description: 'Tenant deleted successfully',
+    type: TenantDto,
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
@@ -239,10 +250,10 @@ export class TenantController {
   async remove(
     @Param('tenantId') tenantId: string,
     @Req() req: RequestWithUser,
-  ): Promise<void> {
+  ): Promise<TenantDto> {
     if (!req.user) {
       throw new UnauthorizedException('User not authenticated');
     }
-    await this.tenantService.remove(tenantId, req.user.id);
+    return this.tenantService.remove(tenantId, req.user.id);
   }
 }

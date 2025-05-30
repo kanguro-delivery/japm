@@ -24,7 +24,7 @@ export class ProjectGuard implements CanActivate {
   constructor(
     private prisma: PrismaService,
     private reflector: Reflector,
-  ) {} // Inject Reflector
+  ) { } // Inject Reflector
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -95,7 +95,7 @@ export class ProjectGuard implements CanActivate {
       request.validatedProjectId = projectId; // A new, consistently named property
 
       this.logger.log(
-        `[ProjectGuard] GRANTED for User ID: "${user.userId}", TenantID: "${user.tenantId}" to Project: "${project.name}" (ID: "${projectId}")`,
+        `[ProjectGuard] GRANTED for User ID: "${user.id}", TenantID: "${user.tenantId}" to Project: "${project.name}" (ID: "${projectId}")`,
       );
       return true;
     } catch (error) {
@@ -115,9 +115,9 @@ export class ProjectGuard implements CanActivate {
 
       // Log unexpected errors
       this.logger.error(
-        `[ProjectGuard] Unexpected error in ProjectGuard for projectId ${projectId} (param: ${projectIdParamName}) and userId ${user.userId}:`,
-        error.stack || error,
-      ); // Use user.userId in log
+        `[ProjectGuard] Unexpected error in ProjectGuard for projectId ${projectId} (param: ${projectIdParamName}) and userId ${user.id}:`,
+        error,
+      );
       // Throw a generic internal server error
       throw new InternalServerErrorException(
         'Internal error during project access authorization.',
