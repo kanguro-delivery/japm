@@ -7,13 +7,22 @@ import {
     ParseIntPipe,
     DefaultValuePipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiBearerAuth,
+    ApiQuery,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DashboardService } from './dashboard.service';
 import { DashboardStatsDto } from './dto/dashboard-stats.dto';
 import { RecentActivityDto } from './dto/recent-activity.dto';
 import { GetUser } from '../auth/decorators/get-user.decorator';
-import { ActivityActionEnum, ActivityEntityTypeEnum } from './types/activity.types';
+import {
+    ActivityActionEnum,
+    ActivityEntityTypeEnum,
+} from './types/activity.types';
 
 @ApiTags('Dashboard')
 @ApiBearerAuth()
@@ -25,33 +34,39 @@ export class DashboardController {
     constructor(private readonly dashboardService: DashboardService) { }
 
     @Get('stats')
-    @ApiOperation({ summary: 'Obtener estadísticas del dashboard' })
+    @ApiOperation({ summary: 'Get dashboard statistics' })
     @ApiResponse({
         status: 200,
-        description: 'Estadísticas obtenidas exitosamente',
+        description: 'Statistics retrieved successfully',
         type: DashboardStatsDto,
     })
     @ApiQuery({ name: 'projectId', required: false, type: String })
     async getStats(
         @GetUser('tenantId') tenantId: string,
-        @Query('projectId') projectId?: string
+        @Query('projectId') projectId?: string,
     ): Promise<DashboardStatsDto> {
-        this.logger.debug(`Obteniendo estadísticas para tenant: ${tenantId}${projectId ? ` y proyecto: ${projectId}` : ''}`);
+        this.logger.debug(
+            `Getting statistics for tenant: ${tenantId}${projectId ? ` and project: ${projectId}` : ''}`,
+        );
         return this.dashboardService.getStats(tenantId, projectId);
     }
 
     @Get('recent-activity')
-    @ApiOperation({ summary: 'Obtener actividad reciente' })
+    @ApiOperation({ summary: 'Get recent activity' })
     @ApiResponse({
         status: 200,
-        description: 'Actividad reciente obtenida exitosamente',
+        description: 'Recent activity retrieved successfully',
         type: [RecentActivityDto],
     })
     @ApiQuery({ name: 'limit', required: false, type: Number })
     @ApiQuery({ name: 'offset', required: false, type: Number })
     @ApiQuery({ name: 'userId', required: false, type: String })
     @ApiQuery({ name: 'projectId', required: false, type: String })
-    @ApiQuery({ name: 'entityType', required: false, enum: ActivityEntityTypeEnum })
+    @ApiQuery({
+        name: 'entityType',
+        required: false,
+        enum: ActivityEntityTypeEnum,
+    })
     @ApiQuery({ name: 'action', required: false, enum: ActivityActionEnum })
     async getRecentActivity(
         @GetUser('tenantId') tenantId: string,
@@ -62,7 +77,7 @@ export class DashboardController {
         @Query('entityType') entityType?: ActivityEntityTypeEnum,
         @Query('action') action?: ActivityActionEnum,
     ): Promise<RecentActivityDto[]> {
-        // Filtrar parámetros vacíos
+        // Filter empty parameters
         const filters = {
             limit,
             offset,
@@ -72,25 +87,25 @@ export class DashboardController {
             action: action || undefined,
         };
 
-        this.logger.debug(
-            `Obteniendo actividad reciente para tenant: ${tenantId} con filtros:`,
-            filters,
-        );
         return this.dashboardService.getRecentActivity(tenantId, filters);
     }
 
     @Get('activity')
-    @ApiOperation({ summary: 'Obtener actividad reciente' })
+    @ApiOperation({ summary: 'Get activity' })
     @ApiResponse({
         status: 200,
-        description: 'Actividad obtenida exitosamente',
+        description: 'Activity retrieved successfully',
         type: [RecentActivityDto],
     })
     @ApiQuery({ name: 'limit', required: false, type: Number })
     @ApiQuery({ name: 'offset', required: false, type: Number })
     @ApiQuery({ name: 'userId', required: false, type: String })
     @ApiQuery({ name: 'projectId', required: false, type: String })
-    @ApiQuery({ name: 'entityType', required: false, enum: ActivityEntityTypeEnum })
+    @ApiQuery({
+        name: 'entityType',
+        required: false,
+        enum: ActivityEntityTypeEnum,
+    })
     @ApiQuery({ name: 'action', required: false, enum: ActivityActionEnum })
     async getActivity(
         @GetUser('tenantId') tenantId: string,
@@ -101,7 +116,9 @@ export class DashboardController {
         @Query('entityType') entityType?: ActivityEntityTypeEnum,
         @Query('action') action?: ActivityActionEnum,
     ): Promise<RecentActivityDto[]> {
-        this.logger.log(`Obteniendo actividad con filtros: ${JSON.stringify({ limit, offset, userId, projectId, entityType, action })}`);
+        this.logger.log(
+            `Getting activity with filters: ${JSON.stringify({ limit, offset, userId, projectId, entityType, action })}`,
+        );
         return this.dashboardService.getRecentActivity(tenantId, {
             limit,
             offset,
@@ -111,4 +128,4 @@ export class DashboardController {
             action,
         });
     }
-} 
+}

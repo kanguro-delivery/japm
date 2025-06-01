@@ -59,9 +59,11 @@ CREATE TABLE `prompts` (
     `type` ENUM('SYSTEM', 'USER', 'ASSISTANT', 'GUARD', 'COMPOSITE', 'CONTEXT', 'FUNCTION', 'EXAMPLE', 'TEMPLATE') NOT NULL DEFAULT 'USER',
     `projectId` VARCHAR(191) NOT NULL,
     `tenantId` VARCHAR(191) NOT NULL,
+    `ownerUserId` VARCHAR(191) NOT NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
+    INDEX `prompts_ownerUserId_idx`(`ownerUserId`),
     UNIQUE INDEX `prompts_id_projectId_key`(`id`, `projectId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -310,6 +312,28 @@ CREATE TABLE `assets` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `ActivityLog` (
+    `id` VARCHAR(191) NOT NULL,
+    `timestamp` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `action` ENUM('CREATE', 'UPDATE', 'DELETE', 'PUBLISH', 'UNPUBLISH', 'APPROVE', 'REJECT') NOT NULL,
+    `entityType` ENUM('PROMPT', 'PROMPT_VERSION', 'PROMPT_TRANSLATION', 'PROMPT_ASSET', 'PROMPT_ASSET_VERSION', 'ASSET_TRANSLATION', 'PROJECT', 'ENVIRONMENT', 'AI_MODEL', 'TAG', 'REGION', 'CULTURAL_DATA', 'RAG_DOCUMENT') NOT NULL,
+    `entityId` VARCHAR(191) NOT NULL,
+    `userId` VARCHAR(191) NOT NULL,
+    `projectId` VARCHAR(191) NOT NULL,
+    `details` TEXT NULL,
+    `changes` TEXT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    INDEX `ActivityLog_timestamp_idx`(`timestamp`),
+    INDEX `ActivityLog_entityType_idx`(`entityType`),
+    INDEX `ActivityLog_entityId_idx`(`entityId`),
+    INDEX `ActivityLog_userId_idx`(`userId`),
+    INDEX `ActivityLog_projectId_idx`(`projectId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `_PromptTags` (
     `A` VARCHAR(191) NOT NULL,
     `B` VARCHAR(191) NOT NULL,
@@ -356,6 +380,9 @@ ALTER TABLE `prompts` ADD CONSTRAINT `prompts_projectId_fkey` FOREIGN KEY (`proj
 
 -- AddForeignKey
 ALTER TABLE `prompts` ADD CONSTRAINT `prompts_tenantId_fkey` FOREIGN KEY (`tenantId`) REFERENCES `tenants`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `prompts` ADD CONSTRAINT `prompts_ownerUserId_fkey` FOREIGN KEY (`ownerUserId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `PromptVersion` ADD CONSTRAINT `PromptVersion_prompt_fkey` FOREIGN KEY (`prompt`) REFERENCES `prompts`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
@@ -422,6 +449,12 @@ ALTER TABLE `PromptExecutionLog` ADD CONSTRAINT `PromptExecutionLog_project_fkey
 
 -- AddForeignKey
 ALTER TABLE `assets` ADD CONSTRAINT `assets_tenantId_fkey` FOREIGN KEY (`tenantId`) REFERENCES `tenants`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ActivityLog` ADD CONSTRAINT `ActivityLog_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ActivityLog` ADD CONSTRAINT `ActivityLog_projectId_fkey` FOREIGN KEY (`projectId`) REFERENCES `Project`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `_PromptTags` ADD CONSTRAINT `_PromptTags_A_fkey` FOREIGN KEY (`A`) REFERENCES `prompts`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

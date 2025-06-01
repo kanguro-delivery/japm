@@ -23,6 +23,9 @@ services:
       - SKIP_SEED=true
       - HEALTH_CHECK_ENABLED=true
       - HEALTH_CHECK_PATH=/health
+      - TENANCY_ENABLED=false
+      - TENANCY_LOGIN=tenant_admin@example.com
+      - TENANCY_PASSWORD=Password123
     volumes:
       - uploads_data:/app/uploads
       - logs_data:/app/logs

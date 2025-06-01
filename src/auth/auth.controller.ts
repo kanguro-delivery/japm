@@ -11,8 +11,8 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LocalAuthGuard } from './guards/local-auth.guard'; // We will create this guard
-import { JwtAuthGuard } from './guards/jwt-auth.guard'; // We will create this guard
+import { LocalAuthGuard } from './guards/local-auth.guard';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import {
@@ -93,14 +93,13 @@ export class AuthController {
   })
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
   @HttpCode(HttpStatus.CREATED)
-  @ThrottleAuth() // 5 intentos por 15 minutos
+  @ThrottleAuth()
   async register(
     @Body() registerDto: RegisterDto,
   ): Promise<Omit<User, 'password'>> {
     return this.authService.register(registerDto);
   }
 
-  // Use LocalAuthGuard to activate LocalStrategy
   @UseGuards(LocalAuthGuard)
   @Post('login')
   @ApiOperation({
@@ -121,14 +120,12 @@ export class AuthController {
     status: 401,
     description: 'Invalid credentials - Email or password is incorrect',
   })
-  @HttpCode(HttpStatus.OK) // Change from 201 to 200 for login
-  @ThrottleAuth() // 5 intentos por 15 minutos
-  login(@Request() req: any): { access_token: string } {
-    // LocalAuthGuard (via LocalStrategy) already validated and attached user to req.user
-    return this.authService.login(req.user); // user here does not have password
+  @HttpCode(HttpStatus.OK)
+  @ThrottleAuth()
+  login(@Request() req: AuthenticatedRequest): { access_token: string } {
+    return this.authService.login(req.user as Omit<User, 'password'>);
   }
 
-  // Protected by JwtAuthGuard
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   @ApiOperation({
@@ -136,7 +133,7 @@ export class AuthController {
     description:
       'Retrieves the profile information of the currently authenticated user',
   })
-  @ApiBearerAuth() // Indicates Bearer token required in Swagger
+  @ApiBearerAuth()
   @ApiResponse({
     status: 200,
     description: 'User profile retrieved successfully',
@@ -146,11 +143,45 @@ export class AuthController {
     status: 401,
     description: 'Unauthorized - Invalid or expired token',
   })
-  @ThrottleRead() // 50 requests por minuto
+  @ThrottleRead()
   getProfile(
     @Request() req: AuthenticatedRequest,
   ): Promise<Omit<User, 'password'>> {
-    // JwtAuthGuard (via JwtStrategy) validated the token and attached data to req.user
     return this.authService.getProfile(req.user.id);
+  }
+
+  @Get('initial_setup_check')
+  @ApiOperation({
+    summary: 'Check if initial setup is needed',
+    description: 'Returns true if a user with the specified email exists, false otherwise',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Initial setup check result',
+    schema: {
+      type: 'object',
+      properties: {
+        exists: {
+          type: 'boolean',
+          description: 'Whether the user exists or not',
+        },
+        userId: {
+          type: 'string',
+          description: 'The ID of the user if it exists',
+          nullable: true,
+        },
+      },
+    },
+  })
+  async initialSetupCheck(): Promise<{
+    exists: boolean;
+    userId: string | null;
+  }> {
+    const email = 'test@example.com';
+    const user = await this.authService.findOneByEmail(email);
+    return {
+      exists: !!user,
+      userId: user?.id || null,
+    };
   }
 }

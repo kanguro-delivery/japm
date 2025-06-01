@@ -51,23 +51,23 @@ export class ProjectController {
   @UseGuards(JwtAuthGuard)
   @Get('mine')
   @ApiOperation({
-    summary: 'Obtener proyectos del usuario actual',
+    summary: 'Get current user projects',
     description:
-      'Retorna todos los proyectos a los que tiene acceso el usuario autenticado',
+      'Returns all projects that the authenticated user has access to',
   })
   @ApiBearerAuth()
   @ApiResponse({
     status: 200,
-    description: 'Lista de proyectos del usuario',
+    description: 'List of user projects',
     type: [CreateProjectDto],
   })
   @ApiResponse({
     status: 401,
-    description: 'No autorizado - Token inválido o expirado',
+    description: 'Unauthorized - Invalid or expired token',
   })
   @ApiResponse({
     status: 403,
-    description: 'Acceso denegado - Información de tenant no disponible',
+    description: 'Access denied - Tenant information not available',
   })
   findMine(@Request() req: RequestWithUser): Promise<Pick<Project, 'id' | 'name'>[]> {
     const userId = req.user.id;

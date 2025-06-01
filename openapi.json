@@ -3,18 +3,18 @@
   "paths": {
     "/api/admin-check": {
       "get": {
-        "description": "Endpoint para verificar si el usuario tiene rol de administrador",
+        "description": "Endpoint to verify if the user has admin role",
         "operationId": "AppController_adminCheck",
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Acceso concedido como administrador"
+            "description": "Admin access granted"
           },
           "401": {
-            "description": "No autorizado"
+            "description": "Unauthorized"
           },
           "403": {
-            "description": "Acceso denegado - Se requiere rol de administrador"
+            "description": "Access denied - Admin role required"
           }
         },
         "security": [
@@ -22,26 +22,26 @@
             "bearer": []
           }
         ],
-        "summary": "Verificar acceso de administrador",
+        "summary": "Check admin access",
         "tags": [
-          "Autenticación y Roles"
+          "Authentication and Roles"
         ]
       }
     },
     "/api/tenant-admin-check": {
       "get": {
-        "description": "Endpoint para verificar si el usuario tiene rol de administrador de tenant",
+        "description": "Endpoint to verify if the user has tenant admin role",
         "operationId": "AppController_tenantAdminCheck",
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Acceso concedido como administrador de tenant"
+            "description": "Tenant admin access granted"
           },
           "401": {
-            "description": "No autorizado"
+            "description": "Unauthorized"
           },
           "403": {
-            "description": "Acceso denegado - Se requiere rol de administrador de tenant"
+            "description": "Access denied - Tenant admin role required"
           }
         },
         "security": [
@@ -49,26 +49,26 @@
             "bearer": []
           }
         ],
-        "summary": "Verificar acceso de administrador de tenant",
+        "summary": "Check tenant admin access",
         "tags": [
-          "Autenticación y Roles"
+          "Authentication and Roles"
         ]
       }
     },
     "/api/user-check": {
       "get": {
-        "description": "Endpoint para verificar si el usuario tiene rol de usuario básico",
+        "description": "Endpoint to verify if the user has basic user role",
         "operationId": "AppController_userCheck",
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Acceso concedido como usuario"
+            "description": "User access granted"
           },
           "401": {
-            "description": "No autorizado"
+            "description": "Unauthorized"
           },
           "403": {
-            "description": "Acceso denegado - Se requiere rol de usuario"
+            "description": "Access denied - User role required"
           }
         },
         "security": [
@@ -76,23 +76,23 @@
             "bearer": []
           }
         ],
-        "summary": "Verificar acceso de usuario",
+        "summary": "Check user access",
         "tags": [
-          "Autenticación y Roles"
+          "Authentication and Roles"
         ]
       }
     },
     "/api/any-authenticated-check": {
       "get": {
-        "description": "Endpoint para verificar si el usuario está autenticado (sin requerir rol específico)",
+        "description": "Endpoint to verify if the user is authenticated (without requiring specific role)",
         "operationId": "AppController_anyAuthenticatedCheck",
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Acceso concedido - Usuario autenticado"
+            "description": "Access granted - User authenticated"
           },
           "401": {
-            "description": "No autorizado"
+            "description": "Unauthorized"
           }
         },
         "security": [
@@ -100,9 +100,9 @@
             "bearer": []
           }
         ],
-        "summary": "Verificar autenticación",
+        "summary": "Check authentication",
         "tags": [
-          "Autenticación y Roles"
+          "Authentication and Roles"
         ]
       }
     },
@@ -360,32 +360,42 @@
         ]
       }
     },
-    "/api/users/check": {
-      "get": {
-        "description": "Returns true if a user with the specified email exists, false otherwise",
-        "operationId": "UserController_checkUserExists",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "User existence check result",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "exists": {
-                      "type": "boolean",
-                      "description": "Whether the user exists or not"
-                    },
-                    "userId": {
-                      "type": "string",
-                      "description": "The ID of the user if it exists",
-                      "nullable": true
-                    }
-                  }
-                }
+    "/api/users/{id}/credentials": {
+      "patch": {
+        "operationId": "UserController_updateCredentials",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "User ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserCredentialsDto"
               }
             }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User credentials updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "User not found"
           }
         },
         "security": [
@@ -393,7 +403,7 @@
             "bearer": []
           }
         ],
-        "summary": "Check if a user exists by email",
+        "summary": "Update user credentials",
         "tags": [
           "Users"
         ]
@@ -501,6 +511,40 @@
           }
         ],
         "summary": "Get user profile",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/initial_setup_check": {
+      "get": {
+        "description": "Returns true if a user with the specified email exists, false otherwise",
+        "operationId": "AuthController_initialSetupCheck",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Initial setup check result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exists": {
+                      "type": "boolean",
+                      "description": "Whether the user exists or not"
+                    },
+                    "userId": {
+                      "type": "string",
+                      "description": "The ID of the user if it exists",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Check if initial setup is needed",
         "tags": [
           "Authentication"
         ]
@@ -1320,12 +1364,12 @@
     },
     "/api/projects/mine": {
       "get": {
-        "description": "Retorna todos los proyectos a los que tiene acceso el usuario autenticado",
+        "description": "Returns all projects that the authenticated user has access to",
         "operationId": "ProjectController_findMine",
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Lista de proyectos del usuario",
+            "description": "List of user projects",
             "content": {
               "application/json": {
                 "schema": {
@@ -1338,10 +1382,10 @@
             }
           },
           "401": {
-            "description": "No autorizado - Token inválido o expirado"
+            "description": "Unauthorized - Invalid or expired token"
           },
           "403": {
-            "description": "Acceso denegado - Información de tenant no disponible"
+            "description": "Access denied - Tenant information not available"
           }
         },
         "security": [
@@ -1352,7 +1396,7 @@
             "bearer": []
           }
         ],
-        "summary": "Obtener proyectos del usuario actual",
+        "summary": "Get current user projects",
         "tags": [
           "Projects"
         ]
@@ -2101,7 +2145,7 @@
             "name": "projectId",
             "required": true,
             "in": "path",
-            "description": "ID del proyecto",
+            "description": "Project ID",
             "schema": {
               "type": "string"
             }
@@ -2109,7 +2153,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Lista de etiquetas.",
+            "description": "List of tags.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2122,7 +2166,7 @@
             }
           },
           "404": {
-            "description": "Proyecto no encontrado."
+            "description": "Project not found."
           }
         },
         "security": [
@@ -2130,7 +2174,7 @@
             "bearer": []
           }
         ],
-        "summary": "Obtiene todas las etiquetas de un proyecto",
+        "summary": "Get all tags from a project",
         "tags": [
           "Tags"
         ]
@@ -2144,7 +2188,7 @@
             "name": "tagId",
             "required": true,
             "in": "path",
-            "description": "ID único de la etiqueta (CUID)",
+            "description": "Unique tag identifier (CUID)",
             "schema": {
               "type": "string"
             }
@@ -2153,7 +2197,7 @@
             "name": "projectId",
             "required": true,
             "in": "path",
-            "description": "ID del proyecto",
+            "description": "Project ID",
             "schema": {
               "type": "string"
             }
@@ -2161,7 +2205,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Etiqueta encontrada.",
+            "description": "Tag found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2171,7 +2215,7 @@
             }
           },
           "404": {
-            "description": "Proyecto o Etiqueta no encontrada."
+            "description": "Project or Tag not found."
           }
         },
         "security": [
@@ -2179,7 +2223,7 @@
             "bearer": []
           }
         ],
-        "summary": "Obtiene una etiqueta por su ID dentro de un proyecto",
+        "summary": "Get a tag by ID within a project",
         "tags": [
           "Tags"
         ]
@@ -2306,7 +2350,7 @@
             "name": "name",
             "required": true,
             "in": "path",
-            "description": "Nombre único de la etiqueta en el proyecto",
+            "description": "Unique tag name in the project",
             "schema": {
               "type": "string"
             }
@@ -2315,7 +2359,7 @@
             "name": "projectId",
             "required": true,
             "in": "path",
-            "description": "ID del proyecto",
+            "description": "Project ID",
             "schema": {
               "type": "string"
             }
@@ -2323,7 +2367,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Etiqueta encontrada.",
+            "description": "Tag found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2333,7 +2377,7 @@
             }
           },
           "404": {
-            "description": "Proyecto o Etiqueta no encontrada."
+            "description": "Project or Tag not found."
           }
         },
         "security": [
@@ -2341,7 +2385,7 @@
             "bearer": []
           }
         ],
-        "summary": "Obtiene una etiqueta por su nombre dentro de un proyecto",
+        "summary": "Get a tag by name within a project",
         "tags": [
           "Tags"
         ]
@@ -2974,7 +3018,7 @@
             "name": "projectId",
             "required": true,
             "in": "path",
-            "description": "ID del proyecto",
+            "description": "Project ID",
             "schema": {
               "type": "string"
             }
@@ -2982,7 +3026,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Lista de metadatos.",
+            "description": "List of metadata.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2995,7 +3039,7 @@
             }
           },
           "404": {
-            "description": "Proyecto no encontrado."
+            "description": "Project not found."
           }
         },
         "security": [
@@ -3003,7 +3047,7 @@
             "bearer": []
           }
         ],
-        "summary": "Obtener todos los metadatos de documentos RAG de un proyecto",
+        "summary": "Get all RAG document metadata from a project",
         "tags": [
           "RAG Document Metadata"
         ]
@@ -3017,7 +3061,7 @@
             "name": "metadataId",
             "required": true,
             "in": "path",
-            "description": "ID de los metadatos (CUID)",
+            "description": "Metadata ID (CUID)",
             "schema": {
               "type": "string"
             }
@@ -3026,7 +3070,7 @@
             "name": "projectId",
             "required": true,
             "in": "path",
-            "description": "ID del proyecto",
+            "description": "Project ID",
             "schema": {
               "type": "string"
             }
@@ -3034,7 +3078,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Metadatos encontrados.",
+            "description": "Metadata found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3044,7 +3088,7 @@
             }
           },
           "404": {
-            "description": "Proyecto o Metadatos no encontrados."
+            "description": "Project or Metadata not found."
           }
         },
         "security": [
@@ -3052,7 +3096,7 @@
             "bearer": []
           }
         ],
-        "summary": "Obtener metadatos por ID dentro de un proyecto",
+        "summary": "Get metadata by ID within a project",
         "tags": [
           "RAG Document Metadata"
         ]
@@ -5908,7 +5952,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Estadísticas obtenidas exitosamente",
+            "description": "Statistics retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -5923,7 +5967,7 @@
             "bearer": []
           }
         ],
-        "summary": "Obtener estadísticas del dashboard",
+        "summary": "Get dashboard statistics",
         "tags": [
           "Dashboard"
         ]
@@ -6008,7 +6052,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Actividad reciente obtenida exitosamente",
+            "description": "Recent activity retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -6026,7 +6070,7 @@
             "bearer": []
           }
         ],
-        "summary": "Obtener actividad reciente",
+        "summary": "Get recent activity",
         "tags": [
           "Dashboard"
         ]
@@ -6111,7 +6155,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Actividad obtenida exitosamente",
+            "description": "Activity retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -6129,7 +6173,7 @@
             "bearer": []
           }
         ],
-        "summary": "Obtener actividad reciente",
+        "summary": "Get activity",
         "tags": [
           "Dashboard"
         ]
@@ -6201,6 +6245,23 @@
       "UpdateUserDto": {
         "type": "object",
         "properties": {}
+      },
+      "UpdateUserCredentialsDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "john.doe@example.com",
+            "description": "New email address"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "example": "newpassword123",
+            "description": "New password (min 8 characters)"
+          }
+        }
       },
       "RegisterDto": {
         "type": "object",

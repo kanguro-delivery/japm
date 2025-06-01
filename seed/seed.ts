@@ -121,20 +121,6 @@ async function main() {
     });
     console.log(`Upserted admin user: ${testUser.name} (ID: ${testUser.id}, Tenant: ${testUser.tenantId})`);
 
-    // Tenant Admin user
-    const tenantAdminUser = await prisma.user.upsert({
-        where: { email: 'tenant_admin@example.com' },
-        update: { name: 'Tenant Admin', password: hashedPassword, role: 'tenant_admin' as Role },
-        create: {
-            email: 'tenant_admin@example.com',
-            name: 'Tenant Admin',
-            password: hashedPassword,
-            tenant: { connect: { id: defaultTenant.id } },
-            role: 'tenant_admin' as Role
-        },
-    });
-    console.log(`Upserted tenant admin user: ${tenantAdminUser.name} (ID: ${tenantAdminUser.id}, Tenant: ${tenantAdminUser.tenantId})`);
-
     // Verificar que los usuarios existen después de crearlos
     const verifyUser = await prisma.user.findUnique({ where: { email: 'test@example.com' } });
     if (verifyUser) {
@@ -389,29 +375,6 @@ async function main() {
     });
     console.log('Upserted System Prompt: prompt-generator');
 
-    // --- Default Project Assets ---
-    console.log('Upserting Default Project Assets...');
-
-    // Crear un Prompt "General" para los Default Assets si no existe
-    const generalAssetsPromptSlug = 'general-default-assets';
-    const generalAssetsPrompt = await prisma.prompt.upsert({
-        where: {
-            prompt_id_project_unique: {
-                id: generalAssetsPromptSlug,
-                projectId: defaultProject.id,
-            },
-        },
-        update: { name: 'General Default Assets Prompt' }, // Actualizar nombre por si cambia
-        create: {
-            id: generalAssetsPromptSlug,
-            name: 'General Default Assets Prompt',
-            description: 'A general prompt to house default project assets.',
-            projectId: defaultProject.id,
-            tenantId: defaultTenant.id,
-            type: 'USER',
-            ownerUserId: testUser.id
-        },
-    });
 }
 
 main()

@@ -28,6 +28,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import { Request } from 'express';
 import { User } from '@prisma/client';
+import { TenancyEnabledGuard } from './guards/tenancy-enabled.guard';
 
 interface RequestWithUser extends Request {
   user?: User;
@@ -36,6 +37,7 @@ interface RequestWithUser extends Request {
 @ApiTags('Tenants')
 @ApiBearerAuth()
 @Controller('tenants')
+@UseGuards(TenancyEnabledGuard)
 export class TenantController {
   constructor(private readonly tenantService: TenantService) { }
 

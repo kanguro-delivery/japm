@@ -11,31 +11,30 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 
-@ApiTags('Autenticación y Roles')
+@ApiTags('Authentication and Roles')
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(private readonly appService: AppService) { }
 
   @Get('admin-check')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.ADMIN)
   @ApiBearerAuth('bearer')
   @ApiOperation({
-    summary: 'Verificar acceso de administrador',
-    description:
-      'Endpoint para verificar si el usuario tiene rol de administrador',
+    summary: 'Check admin access',
+    description: 'Endpoint to verify if the user has admin role',
   })
   @ApiResponse({
     status: 200,
-    description: 'Acceso concedido como administrador',
+    description: 'Admin access granted',
   })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({
     status: 403,
-    description: 'Acceso denegado - Se requiere rol de administrador',
+    description: 'Access denied - Admin role required',
   })
   adminCheck() {
-    return { message: '¡Acceso de administrador concedido!' };
+    return { message: 'Admin access granted!' };
   }
 
   @Get('tenant-admin-check')
@@ -43,21 +42,20 @@ export class AppController {
   @Roles(Role.TENANT_ADMIN)
   @ApiBearerAuth('bearer')
   @ApiOperation({
-    summary: 'Verificar acceso de administrador de tenant',
-    description:
-      'Endpoint para verificar si el usuario tiene rol de administrador de tenant',
+    summary: 'Check tenant admin access',
+    description: 'Endpoint to verify if the user has tenant admin role',
   })
   @ApiResponse({
     status: 200,
-    description: 'Acceso concedido como administrador de tenant',
+    description: 'Tenant admin access granted',
   })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({
     status: 403,
-    description: 'Acceso denegado - Se requiere rol de administrador de tenant',
+    description: 'Access denied - Tenant admin role required',
   })
   tenantAdminCheck() {
-    return { message: '¡Acceso de administrador de tenant concedido!' };
+    return { message: 'Tenant admin access granted!' };
   }
 
   @Get('user-check')
@@ -65,34 +63,35 @@ export class AppController {
   @Roles(Role.USER)
   @ApiBearerAuth('bearer')
   @ApiOperation({
-    summary: 'Verificar acceso de usuario',
-    description:
-      'Endpoint para verificar si el usuario tiene rol de usuario básico',
+    summary: 'Check user access',
+    description: 'Endpoint to verify if the user has basic user role',
   })
-  @ApiResponse({ status: 200, description: 'Acceso concedido como usuario' })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 200, description: 'User access granted' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({
     status: 403,
-    description: 'Acceso denegado - Se requiere rol de usuario',
+    description: 'Access denied - User role required',
   })
   userCheck() {
-    return { message: '¡Acceso de usuario concedido!' };
+    return { message: 'User access granted!' };
   }
 
   @Get('any-authenticated-check')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth('bearer')
   @ApiOperation({
-    summary: 'Verificar autenticación',
+    summary: 'Check authentication',
     description:
-      'Endpoint para verificar si el usuario está autenticado (sin requerir rol específico)',
+      'Endpoint to verify if the user is authenticated (without requiring specific role)',
   })
   @ApiResponse({
     status: 200,
-    description: 'Acceso concedido - Usuario autenticado',
+    description: 'Access granted - User authenticated',
   })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   anyAuthenticatedCheck() {
-    return { message: '¡Acceso autenticado concedido (sin rol específico)!' };
+    return {
+      message: 'Authenticated access granted (no specific role required)!',
+    };
   }
 }

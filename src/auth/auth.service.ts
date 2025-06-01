@@ -75,4 +75,9 @@ export class AuthService {
     const { password, ...result } = user;
     return result;
   }
+
+  // Method to find user by email (used by initial setup check)
+  async findOneByEmail(email: string): Promise<User | null> {
+    return this.userService.findOneByEmail(email);
+  }
 }

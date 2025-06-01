@@ -36,10 +36,14 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { ActivityLogModule } from './services/activity-log.module';
 import { ActivityEntityType } from '@prisma/client';
 import { ActivityLogService } from './services/activityLogService';
+import configuration from './config/configuration';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [configuration],
+    }),
     CacheModule.register({
       isGlobal: true,
       ttl: 60 * 5,

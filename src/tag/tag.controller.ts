@@ -45,7 +45,7 @@ interface RequestWithProject extends ExpressRequest {
 export class TagController {
   private readonly logger = new Logger(TagController.name);
 
-  constructor(private readonly service: TagService) {}
+  constructor(private readonly service: TagService) { }
 
   @Post()
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
@@ -70,14 +70,14 @@ export class TagController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Obtiene todas las etiquetas de un proyecto' })
-  @ApiParam({ name: 'projectId', description: 'ID del proyecto', type: String })
+  @ApiOperation({ summary: 'Get all tags from a project' })
+  @ApiParam({ name: 'projectId', description: 'Project ID', type: String })
   @ApiResponse({
     status: 200,
-    description: 'Lista de etiquetas.',
+    description: 'List of tags.',
     type: [TagDto],
   })
-  @ApiResponse({ status: 404, description: 'Proyecto no encontrado.' })
+  @ApiResponse({ status: 404, description: 'Project not found.' })
   findAll(@Req() req: RequestWithProject): Promise<Tag[]> {
     const projectId = req.projectId;
     return this.service.findAll(projectId);
@@ -85,22 +85,22 @@ export class TagController {
 
   @Get(':tagId')
   @ApiOperation({
-    summary: 'Obtiene una etiqueta por su ID dentro de un proyecto',
+    summary: 'Get a tag by ID within a project',
   })
-  @ApiParam({ name: 'projectId', description: 'ID del proyecto', type: String })
+  @ApiParam({ name: 'projectId', description: 'Project ID', type: String })
   @ApiParam({
     name: 'tagId',
-    description: 'ID único de la etiqueta (CUID)',
+    description: 'Unique tag identifier (CUID)',
     type: String,
   })
   @ApiResponse({
     status: 200,
-    description: 'Etiqueta encontrada.',
+    description: 'Tag found.',
     type: TagDto,
   })
   @ApiResponse({
     status: 404,
-    description: 'Proyecto o Etiqueta no encontrada.',
+    description: 'Project or Tag not found.',
   })
   findOne(
     @Req() req: RequestWithProject,
@@ -112,21 +112,21 @@ export class TagController {
 
   @Get('/by-name/:name')
   @ApiOperation({
-    summary: 'Obtiene una etiqueta por su nombre dentro de un proyecto',
+    summary: 'Get a tag by name within a project',
   })
-  @ApiParam({ name: 'projectId', description: 'ID del proyecto', type: String })
+  @ApiParam({ name: 'projectId', description: 'Project ID', type: String })
   @ApiParam({
     name: 'name',
-    description: 'Nombre único de la etiqueta en el proyecto',
+    description: 'Unique tag name in the project',
   })
   @ApiResponse({
     status: 200,
-    description: 'Etiqueta encontrada.',
+    description: 'Tag found.',
     type: TagDto,
   })
   @ApiResponse({
     status: 404,
-    description: 'Proyecto o Etiqueta no encontrada.',
+    description: 'Project or Tag not found.',
   })
   findByName(
     @Req() req: RequestWithProject,

@@ -54,7 +54,7 @@ class RagDocumentMetadataResponse extends CreateRagDocumentMetadataDto {
 export class RagDocumentMetadataController {
   private readonly logger = new Logger(RagDocumentMetadataController.name); // Add Logger instance
 
-  constructor(private readonly service: RagDocumentMetadataService) {}
+  constructor(private readonly service: RagDocumentMetadataService) { }
 
   @Post()
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
@@ -86,36 +86,36 @@ export class RagDocumentMetadataController {
 
   @Get()
   @ApiOperation({
-    summary: 'Obtener todos los metadatos de documentos RAG de un proyecto',
+    summary: 'Get all RAG document metadata from a project',
   })
-  @ApiParam({ name: 'projectId', description: 'ID del proyecto', type: String })
+  @ApiParam({ name: 'projectId', description: 'Project ID', type: String })
   @ApiResponse({
     status: 200,
-    description: 'Lista de metadatos.',
+    description: 'List of metadata.',
     type: [RagDocumentMetadataResponse],
   })
-  @ApiResponse({ status: 404, description: 'Proyecto no encontrado.' })
+  @ApiResponse({ status: 404, description: 'Project not found.' })
   findAll(@Req() req: RequestWithProject): Promise<RagDocumentMetadata[]> {
     const projectId = req.projectId;
     return this.service.findAll(projectId);
   }
 
-  @Get(':metadataId') // Usar un nombre de parámetro más específico
-  @ApiOperation({ summary: 'Obtener metadatos por ID dentro de un proyecto' })
-  @ApiParam({ name: 'projectId', description: 'ID del proyecto', type: String })
+  @Get(':metadataId')
+  @ApiOperation({ summary: 'Get metadata by ID within a project' })
+  @ApiParam({ name: 'projectId', description: 'Project ID', type: String })
   @ApiParam({
     name: 'metadataId',
-    description: 'ID de los metadatos (CUID)',
+    description: 'Metadata ID (CUID)',
     type: String,
   })
   @ApiResponse({
     status: 200,
-    description: 'Metadatos encontrados.',
+    description: 'Metadata found.',
     type: RagDocumentMetadataResponse,
   })
   @ApiResponse({
     status: 404,
-    description: 'Proyecto o Metadatos no encontrados.',
+    description: 'Project or Metadata not found.',
   })
   findOne(
     @Req() req: RequestWithProject,

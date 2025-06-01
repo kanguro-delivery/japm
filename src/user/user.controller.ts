@@ -35,6 +35,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import { Logger } from '@nestjs/common'; // Import Logger
+import { UpdateUserCredentialsDto } from './dto/update-user-credentials.dto';
+import { AuthenticatedRequest } from '../common/types/request.types';
 
 interface RequestWithUser extends Request {
   user?: {
@@ -79,7 +81,10 @@ export class UserController {
     status: HttpStatus.FORBIDDEN,
     description: 'Forbidden - Admin or tenant admin role required',
   })
-  create(@Request() req: RequestWithUser, @Body() createUserDto: CreateUserDto): Promise<User> {
+  create(
+    @Request() req: RequestWithUser,
+    @Body() createUserDto: CreateUserDto,
+  ): Promise<User> {
     const user = req.user;
     if (!user) {
       this.logger.error('User not found in request for user creation');
@@ -90,7 +95,11 @@ export class UserController {
     if (user.role === Role.TENANT_ADMIN && createUserDto.tenantId) {
       // Si es default-tenant, lo permitimos directamente
       if (createUserDto.tenantId === 'default-tenant') {
-        return this.userService.create(createUserDto, createUserDto.tenantId, user.id);
+        return this.userService.create(
+          createUserDto,
+          createUserDto.tenantId,
+          user.id,
+        );
       }
 
       // Para el resto de IDs, validamos que sea un UUID válido
@@ -99,7 +108,11 @@ export class UserController {
           type: 'param',
           data: 'tenantId',
         });
-        return this.userService.create(createUserDto, createUserDto.tenantId, user.id);
+        return this.userService.create(
+          createUserDto,
+          createUserDto.tenantId,
+          user.id,
+        );
       } catch {
         throw new BadRequestException(
           'Invalid tenant ID format. Must be a valid UUID or "default-tenant"',
@@ -113,7 +126,9 @@ export class UserController {
       this.logger.error(
         'Tenant ID not found in authenticated admin user request for user creation',
       );
-      throw new UnauthorizedException('Admin user tenant information is missing');
+      throw new UnauthorizedException(
+        'Admin user tenant information is missing',
+      );
     }
     return this.userService.create(createUserDto, tenantId, user.id);
   }
@@ -259,23 +274,18 @@ export class UserController {
     description: 'User not found - The specified ID does not exist',
   })
   update(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<User> {
-    this.logger.debug(
-      `[update] Received PATCH for userId: ${id}. Body: ${JSON.stringify(updateUserDto, null, 2)}`,
-    );
-    const tenantId = req.user?.tenantId;
-    const adminUserId = req.user?.id;
+    const tenantId = req.user.tenantId;
+    const adminUserId = req.user.id;
 
     if (!tenantId || !adminUserId) {
       this.logger.error(
         'Tenant ID or Admin User ID not found in authenticated admin user request for user update',
       );
-      throw new UnauthorizedException(
-        'Admin user information is missing',
-      );
+      throw new UnauthorizedException('Admin user information is missing');
     }
     return this.userService.update(id, updateUserDto, adminUserId, tenantId);
   }
@@ -309,50 +319,44 @@ export class UserController {
     status: 404,
     description: 'User not found - The specified ID does not exist',
   })
-  remove(@Request() req, @Param('id') id: string): Promise<User> {
-    const tenantId = req.user?.tenantId;
-    const adminUserId = req.user?.id;
+  remove(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ): Promise<User> {
+    const tenantId = req.user.tenantId;
+    const adminUserId = req.user.id;
 
     if (!tenantId || !adminUserId) {
       this.logger.error(
         'Tenant ID or Admin User ID not found in authenticated admin user request for user deletion',
       );
-      throw new UnauthorizedException(
-        'Admin user information is missing',
-      );
+      throw new UnauthorizedException('Admin user information is missing');
     }
     return this.userService.remove(id, adminUserId, tenantId);
   }
 
-  @Get('check')
-  @ApiOperation({
-    summary: 'Check if a user exists by email',
-    description: 'Returns true if a user with the specified email exists, false otherwise',
-  })
+  @Patch(':id/credentials')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Update user credentials' })
+  @ApiParam({ name: 'id', description: 'User ID' })
   @ApiResponse({
     status: 200,
-    description: 'User existence check result',
-    schema: {
-      type: 'object',
-      properties: {
-        exists: {
-          type: 'boolean',
-          description: 'Whether the user exists or not',
-        },
-        userId: {
-          type: 'string',
-          description: 'The ID of the user if it exists',
-          nullable: true
-        }
-      },
-    },
+    description: 'User credentials updated successfully',
   })
-  async checkUserExists(): Promise<{ exists: boolean; userId: string | null }> {
-    const email = 'tenant_admin@example.com';
-    const user = await this.userService.findOneByEmail(email);
-    return {
-      exists: !!user,
-      userId: user?.id || null
-    };
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async updateCredentials(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateUserCredentialsDto: UpdateUserCredentialsDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.userService.update(
+      id,
+      updateUserCredentialsDto,
+      req.user.id,
+      req.user.tenantId,
+    );
   }
 }

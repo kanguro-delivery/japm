@@ -1,8 +1,20 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
+import {
+    Injectable,
+    NestInterceptor,
+    ExecutionContext,
+    CallHandler,
+    Logger,
+} from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { ActivityLogService, ActivityEntityType, ActivityAction } from '../services/activityLogService';
+import {
+    ActivityLogService,
+    ActivityEntityType,
+    ActivityAction,
+} from '../services/activityLogService';
 import { JwtService } from '@nestjs/jwt';
+import { Request } from 'express';
+import { AuthenticatedRequest, AuthenticatedUser } from '../common/types/request.types';
 
 @Injectable()
 export class ActivityLogInterceptor implements NestInterceptor {
@@ -10,10 +22,12 @@ export class ActivityLogInterceptor implements NestInterceptor {
 
     constructor(
         private readonly activityLogService: ActivityLogService,
-        private readonly jwtService: JwtService
+        private readonly jwtService: JwtService,
     ) { }
 
-    private getEntityTypeFromPath(path: string): typeof ActivityEntityType[keyof typeof ActivityEntityType] | null {
+    private getEntityTypeFromPath(
+        path: string,
+    ): typeof ActivityEntityType[keyof typeof ActivityEntityType] | null {
         // Normalize path to ensure consistent comparisons
         const normalizedPath = path.toLowerCase();
 
@@ -32,7 +46,9 @@ export class ActivityLogInterceptor implements NestInterceptor {
         return null;
     }
 
-    private getActionFromMethod(method: string): typeof ActivityAction[keyof typeof ActivityAction] | null {
+    private getActionFromMethod(
+        method: string,
+    ): typeof ActivityAction[keyof typeof ActivityAction] | null {
         switch (method) {
             case 'POST':
                 return ActivityAction.CREATE;
@@ -42,21 +58,22 @@ export class ActivityLogInterceptor implements NestInterceptor {
             case 'DELETE':
                 return ActivityAction.DELETE;
             default:
-                this.logger.debug(`No action found for method: ${method}`);
+                //this.logger.debug(`No action found for method: ${method}`);
                 return null;
         }
     }
 
-    private getProjectId(request: any): string | null {
-        const projectId = request.body?.projectId ||
+    private getProjectId(request: Request): string | null {
+        const projectId =
+            request.body?.projectId ||
             request.params?.projectId ||
             request.query?.projectId ||
             request.headers['x-project-id'];
 
-        return projectId;
+        return projectId as string | null;
     }
 
-    private getUserId(request: any): string | null {
+    private getUserId(request: AuthenticatedRequest): string | null {
         // First try to get ID from user object
         if (request.user?.id) {
             return request.user.id;
@@ -69,7 +86,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
                 const token = authHeader.split(' ')[1];
                 const decoded = this.jwtService.decode(token);
                 if (decoded && typeof decoded === 'object' && 'sub' in decoded) {
-                    return decoded.sub;
+                    return decoded.sub as string;
                 }
             } catch (error) {
                 this.logger.warn(`Error decoding JWT token: ${error.message}`);
@@ -80,18 +97,20 @@ export class ActivityLogInterceptor implements NestInterceptor {
     }
 
     intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-        const request = context.switchToHttp().getRequest();
+        const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
         const { method, path, body, params, user } = request;
         const entityType = this.getEntityTypeFromPath(path);
         const action = this.getActionFromMethod(method);
 
         if (!entityType || !action) {
-            this.logger.debug(`Activity will not be logged: entityType or action not found`, {
+            /*
+            this.logger.debug('Activity will not be logged: entityType or action not found', {
                 path,
                 method,
                 entityType,
-                action
+                action,
             });
+            */
             return next.handle();
         }
 
@@ -99,7 +118,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
         const projectId = this.getProjectId(request);
 
         if (!userId || !projectId) {
-            this.logger.warn(`Could not log activity: missing userId or projectId`, {
+            this.logger.warn('Could not log activity: missing userId or projectId', {
                 userId,
                 projectId,
                 path,
@@ -108,7 +127,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
                 headers: request.headers,
                 body: request.body,
                 params: request.params,
-                query: request.query
+                query: request.query,
             });
             return next.handle();
         }
@@ -119,7 +138,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
                     try {
                         const entityId = response?.id || params?.aiModelId || params?.id;
                         if (!entityId) {
-                            this.logger.warn(`Could not get entityId from response`, {
+                            this.logger.warn('Could not get entityId from response', {
                                 response,
                                 params,
                             });
@@ -142,14 +161,13 @@ export class ActivityLogInterceptor implements NestInterceptor {
                                 new: body?.newData || body,
                             },
                         });
-
                     } catch (error) {
                         this.logger.error(`Error logging activity: ${error.message}`, error.stack);
                     }
                 },
                 error: (error) => {
                     this.logger.error(`Error in request: ${error.message}`, error.stack);
-                }
+                },
             }),
         );
     }

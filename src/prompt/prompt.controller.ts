@@ -42,11 +42,11 @@ export class PromptController {
     @Req() req: AuthenticatedRequest
   ) {
     if (!req.user) {
-      throw new UnauthorizedException('No autenticado');
+      throw new UnauthorizedException('Not authenticated');
     }
     const prompt = await this.promptService.findOne(id, projectId, req.user.tenantId);
     if (!prompt) {
-      throw new NotFoundException(`Prompt con ID ${id} no encontrado`);
+      throw new NotFoundException(`Prompt with ID ${id} not found`);
     }
     return prompt;
   }
