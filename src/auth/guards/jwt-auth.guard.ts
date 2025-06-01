@@ -11,14 +11,14 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     // or to allow access even if the token is invalid (e.g., for optionally authenticated routes)
     handleRequest(err: any, user: any, info: any, context: any) {
         this.logger.debug(`JwtAuthGuard - Processing request: ${context.switchToHttp().getRequest().url}`);
-        this.logger.debug(`JwtAuthGuard - User from token: ${JSON.stringify(user)}`);
+        //this.logger.debug(`JwtAuthGuard - User from token: ${JSON.stringify(user)}`);
 
         if (err || !user) {
             this.logger.warn(`JwtAuthGuard - Authentication failed: ${err?.message || info?.message || 'No user found'}`);
             throw err || new UnauthorizedException(info?.message || 'Invalid or expired token');
         }
 
-        this.logger.debug(`JwtAuthGuard - Authentication successful for user: ${user.email}`);
+        //this.logger.debug(`JwtAuthGuard - Authentication successful for user: ${user.email}`);
         return user;
     }
 }

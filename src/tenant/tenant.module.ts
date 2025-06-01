@@ -1,18 +1,18 @@
 import { Module } from '@nestjs/common';
 import { TenantService } from './tenant.service';
 import { TenantController } from './tenant.controller';
-import { PrismaModule } from '../prisma/prisma.module'; // Asegúrate que PrismaModule esté exportando PrismaService
-import { UserModule } from '../user/user.module'; // Importar UserModule
+import { PrismaModule } from '../prisma/prisma.module';
+import { UserModule } from '../user/user.module';
 import { CommonModule } from '../common/common.module';
 
 @Module({
   imports: [
     PrismaModule,
-    UserModule, // Añadir UserModule a los imports
+    UserModule,
     CommonModule,
   ],
   controllers: [TenantController],
   providers: [TenantService],
-  exports: [TenantService], // Exportar para que otros módulos puedan usarlo
+  exports: [TenantService],
 })
-export class TenantModule {}
+export class TenantModule { }

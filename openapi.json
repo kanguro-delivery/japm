@@ -1876,7 +1876,7 @@
             "description": "Unauthorized - Invalid or expired token"
           },
           "403": {
-            "description": "Forbidden - Admin or tenant admin role required"
+            "description": "Forbidden - Admin or tenant admin role required, or tenancy is disabled"
           },
           "409": {
             "description": "Tenant name already exists - The provided name is already in use"
@@ -1914,7 +1914,7 @@
             "description": "Unauthorized - Invalid or expired token"
           },
           "403": {
-            "description": "Forbidden - Admin or tenant admin role required"
+            "description": "Forbidden - Admin or tenant admin role required, or tenancy is disabled"
           }
         },
         "security": [
@@ -1958,7 +1958,7 @@
             "description": "Unauthorized - Invalid or expired token"
           },
           "403": {
-            "description": "Forbidden - Admin or tenant admin role required"
+            "description": "Forbidden - Admin or tenant admin role required, or tenancy is disabled"
           },
           "404": {
             "description": "Tenant not found - The specified ID does not exist"
@@ -2017,7 +2017,7 @@
             "description": "Unauthorized - Invalid or expired token"
           },
           "403": {
-            "description": "Forbidden - Admin or tenant admin role required"
+            "description": "Forbidden - Admin or tenant admin role required, or tenancy is disabled"
           },
           "404": {
             "description": "Tenant not found - The specified ID does not exist"
@@ -2066,7 +2066,7 @@
             "description": "Unauthorized - Invalid or expired token"
           },
           "403": {
-            "description": "Forbidden - Admin or tenant admin role required"
+            "description": "Forbidden - Admin or tenant admin role required, or tenancy is disabled"
           },
           "404": {
             "description": "Tenant not found - The specified ID does not exist"

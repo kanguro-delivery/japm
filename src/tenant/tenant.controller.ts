@@ -34,6 +34,13 @@ interface RequestWithUser extends Request {
   user?: User;
 }
 
+/**
+ * Tenant Controller
+ * 
+ * Note: This controller is protected by TenancyEnabledGuard.
+ * When TENANCY_ENABLED=false, all endpoints will return 403 Forbidden.
+ * Endpoints remain visible in Swagger for documentation purposes.
+ */
 @ApiTags('Tenants')
 @ApiBearerAuth()
 @Controller('tenants')
@@ -69,7 +76,7 @@ export class TenantController {
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'Forbidden - Admin or tenant admin role required',
+    description: 'Forbidden - Admin or tenant admin role required, or tenancy is disabled',
   })
   create(
     @Body() createTenantDto: CreateTenantDto,
@@ -100,7 +107,7 @@ export class TenantController {
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'Forbidden - Admin or tenant admin role required',
+    description: 'Forbidden - Admin or tenant admin role required, or tenancy is disabled',
   })
   findAll(): Promise<TenantDto[]> {
     return this.tenantService.findAll();
@@ -129,7 +136,7 @@ export class TenantController {
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'Forbidden - Admin or tenant admin role required',
+    description: 'Forbidden - Admin or tenant admin role required, or tenancy is disabled',
   })
   @ApiParam({
     name: 'tenantId',
@@ -197,7 +204,7 @@ export class TenantController {
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'Forbidden - Admin or tenant admin role required',
+    description: 'Forbidden - Admin or tenant admin role required, or tenancy is disabled',
   })
   @ApiParam({
     name: 'tenantId',
@@ -240,7 +247,7 @@ export class TenantController {
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
-    description: 'Forbidden - Admin or tenant admin role required',
+    description: 'Forbidden - Admin or tenant admin role required, or tenancy is disabled',
   })
   @ApiParam({
     name: 'tenantId',

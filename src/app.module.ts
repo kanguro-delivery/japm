@@ -1,4 +1,4 @@
-import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -34,7 +34,6 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { ActivityLogModule } from './services/activity-log.module';
-import { ActivityEntityType } from '@prisma/client';
 import { ActivityLogService } from './services/activityLogService';
 import configuration from './config/configuration';
 
