@@ -43,4 +43,6 @@ Your sole task is to take the **Initial Prompt** I provide and **output ONLY the
 1.  I provide the **Initial Prompt**.
 2.  You detect the language, perform internal refinement according to the guidelines, and **immediately** respond with **only** the refined, detailed, and structured prompt text in the **original language**.
 
-**(Now, provide your 'Initial Prompt'.)**
+**The 'Initial Prompt':**
+
+{{prompt_to_improve}}

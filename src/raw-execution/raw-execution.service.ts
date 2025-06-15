@@ -21,7 +21,7 @@ export class RawExecutionService {
     private prisma: PrismaService,
     private configService: ConfigService,
     private systemPromptService: SystemPromptService,
-  ) {}
+  ) { }
 
   private substituteVariables(
     text: string,
@@ -54,7 +54,7 @@ export class RawExecutionService {
       variables,
     );
     this.logger.debug(
-      `Processed system prompt with variables: ${processedSystemPrompt}`,
+      `Processed system prompt with variables: ${systemPromptName}`,
     );
 
     // 3. Fetch AI Model by ID (Globally unique CUID)
@@ -83,7 +83,7 @@ export class RawExecutionService {
     // 5. Construct Final Prompt
     const finalPrompt = `${processedSystemPrompt}\n\n---\n\nUser Input:\n${userText}`;
     this.logger.debug(
-      `Executing with AI Model: ${aiModel.name}, System Prompt: ${systemPrompt.name}, Final Prompt: ${finalPrompt}`,
+      `Executing with AI Model: ${aiModel.name}, System Prompt: ${systemPrompt.name}`,
     );
 
     // 6. Instantiate and Invoke LangChain Model
