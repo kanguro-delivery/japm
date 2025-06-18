@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as crypto from 'crypto';
 import { CreateApiKeyDto, UpdateApiKeyDto } from './dto';
@@ -6,6 +6,8 @@ import { ApiKey, User } from '@prisma/client';
 
 @Injectable()
 export class ApiKeyService {
+    private readonly logger = new Logger(ApiKeyService.name);
+
     constructor(private readonly prisma: PrismaService) { }
 
     async create(createApiKeyDto: CreateApiKeyDto, user: User) {
@@ -59,19 +61,49 @@ export class ApiKeyService {
     }
 
     async findUserByApiKey(apiKey: string): Promise<User | null> {
-        const [prefix, key] = apiKey.split('_');
-        if (!prefix || !key) {
+        const parts = apiKey.split('_');
+        if (parts.length !== 3) {
+            this.logger.warn(
+                `[findUserByApiKey] DENIED: Received malformed API Key (incorrect number of parts). Expected format: part1_part2_part3.`,
+            );
             return null;
         }
 
-        const hashedKey = this.hashApiKey(key);
+        const prefix = `${parts[0]}_${parts[1]}`;
+        const key = parts[2];
 
-        const apiKeyRecord = await this.prisma.apiKey.findUnique({
-            where: { prefix, hashedKey },
+        const hashedKey = this.hashApiKey(key);
+        this.logger.log(
+            `[findUserByApiKey] Searching for API Key with prefix: ${prefix}`,
+        );
+
+        const apiKeyRecord = await this.prisma.apiKey.findFirst({
+            where: {
+                prefix: prefix,
+                hashedKey: hashedKey,
+            },
             include: { user: true },
         });
 
-        if (!apiKeyRecord || apiKeyRecord.revoked) {
+        if (!apiKeyRecord) {
+            this.logger.warn(
+                `[findUserByApiKey] DENIED: No API Key found in DB for prefix: ${prefix}`,
+            );
+            return null;
+        }
+
+        if (apiKeyRecord.revoked) {
+            this.logger.warn(
+                `[findUserByApiKey] DENIED: API Key with ID ${apiKeyRecord.id} is REVOKED.`,
+            );
+            return null;
+        }
+
+        const now = new Date();
+        if (apiKeyRecord.expiresAt && apiKeyRecord.expiresAt < now) {
+            this.logger.warn(
+                `[findUserByApiKey] DENIED: API Key with ID ${apiKeyRecord.id} EXPIRED at ${apiKeyRecord.expiresAt}.`,
+            );
             return null;
         }
 
@@ -83,9 +115,15 @@ export class ApiKeyService {
             })
             .catch((err) => {
                 // Log the error but don't block the request
-                console.error(`Failed to update lastUsedAt for API key ${apiKeyRecord.id}`, err);
+                this.logger.error(
+                    `Failed to update lastUsedAt for API key ${apiKeyRecord.id}`,
+                    err,
+                );
             });
 
+        this.logger.log(
+            `[findUserByApiKey] SUCCESS: API Key is valid. Returning user ${apiKeyRecord.userId}.`,
+        );
         return apiKeyRecord.user;
     }
 

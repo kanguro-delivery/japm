@@ -1,13 +1,13 @@
 import {
   Controller,
   Param,
-  Query,
   UsePipes,
   ValidationPipe,
   UseGuards,
   Request,
   Post,
   Body,
+  Logger,
 } from '@nestjs/common';
 import { ServePromptService } from './serve-prompt.service';
 import {
@@ -15,22 +15,20 @@ import {
   ApiOperation,
   ApiResponse,
   ApiParam,
-  ApiQuery,
   ApiBearerAuth,
   ApiBody,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ProjectGuard } from '../common/guards/project.guard';
 import { PromptConsumerGuard } from '../common/guards/prompt-consumer.guard';
-import { ExecutePromptQueryDto } from './dto/execute-prompt-query.dto';
 import { ExecutePromptBodyDto } from './dto/execute-prompt-body.dto';
 
 @ApiTags('Serve Prompt')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PromptConsumerGuard)
+@UseGuards(PromptConsumerGuard)
 @Controller('serve-prompt')
 export class ServePromptController {
-  constructor(private readonly service: ServePromptService) {}
+  private readonly logger = new Logger(ServePromptController.name);
+  constructor(private readonly service: ServePromptService) { }
 
   @Post('execute/:projectId/:promptName/:versionTag/base')
   @UseGuards(ProjectGuard)
@@ -81,6 +79,12 @@ export class ServePromptController {
     @Body() body: ExecutePromptBodyDto,
     @Request() req,
   ): Promise<{ processedPrompt: string; metadata: any }> {
+    this.logger.log(
+      `[ServePromptController] Request received for executePromptWithoutLanguage.`,
+    );
+    this.logger.debug(
+      `[ServePromptController] Params: projectId=${projectId}, promptName=${promptName}, versionTag=${versionTag}`,
+    );
     return this.service.executePromptVersion(
       { projectId, promptName, versionTag },
       body,

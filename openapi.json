@@ -556,7 +556,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "API Key created successfully. The full key is returned only once.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateApiKeyResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -6492,10 +6499,68 @@
         "properties": {
           "name": {
             "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
           }
         },
         "required": [
           "name"
+        ]
+      },
+      "CreateApiKeyResponseDto": {
+        "type": "object",
+        "properties": {
+          "apiKey": {
+            "type": "string",
+            "description": "The full API Key secret. This is only returned once upon creation. Save it securely.",
+            "example": "japm_1234abcd_unSecretoMuyLargoQueSoloVesUnaVez"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "prefix": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "lastUsedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "revoked": {
+            "type": "boolean"
+          },
+          "userId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "apiKey",
+          "id",
+          "name",
+          "prefix",
+          "createdAt",
+          "updatedAt",
+          "expiresAt",
+          "lastUsedAt",
+          "revoked",
+          "userId"
         ]
       },
       "UpdateApiKeyDto": {
@@ -6503,6 +6568,13 @@
         "properties": {
           "name": {
             "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "revoked": {
+            "type": "boolean"
           }
         }
       },
@@ -7401,10 +7473,7 @@
           "variables": {
             "type": "object"
           }
-        },
-        "required": [
-          "variables"
-        ]
+        }
       },
       "CreateAiModelDto": {
         "type": "object",

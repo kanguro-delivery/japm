@@ -12,7 +12,6 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import {
@@ -29,6 +28,7 @@ import {
   ThrottleRead,
 } from '../common/decorators/throttle.decorator';
 import { AuthenticatedRequest } from '../common/types/request.types';
+import { Public } from './decorators/public.decorator';
 
 // DTO for Login response
 class LoginResponse {
@@ -71,6 +71,7 @@ class UserProfileResponse {
 export class AuthController {
   constructor(private authService: AuthService) { }
 
+  @Public()
   @Post('register')
   @ApiOperation({
     summary: 'Register new user',
@@ -100,6 +101,7 @@ export class AuthController {
     return this.authService.register(registerDto);
   }
 
+  @Public()
   @UseGuards(LocalAuthGuard)
   @Post('login')
   @ApiOperation({
@@ -126,7 +128,6 @@ export class AuthController {
     return this.authService.login(req.user as Omit<User, 'password'>);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('profile')
   @ApiOperation({
     summary: 'Get user profile',
@@ -150,6 +151,7 @@ export class AuthController {
     return this.authService.getProfile(req.user.id);
   }
 
+  @Public()
   @Get('initial_setup_check')
   @ApiOperation({
     summary: 'Check if initial setup is needed',

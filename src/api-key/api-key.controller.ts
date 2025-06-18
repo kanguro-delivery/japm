@@ -8,10 +8,14 @@ import {
     Delete,
 } from '@nestjs/common';
 import { ApiKeyService } from './api-key.service';
-import { CreateApiKeyDto, UpdateApiKeyDto } from './dto';
+import {
+    CreateApiKeyDto,
+    UpdateApiKeyDto,
+    CreateApiKeyResponseDto,
+} from './dto';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
 import { User } from '@prisma/client';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('ApiKeys')
 @ApiBearerAuth()
@@ -21,6 +25,11 @@ export class ApiKeyController {
 
     @Post()
     @ApiOperation({ summary: 'Create a new API Key for the current user' })
+    @ApiResponse({
+        status: 201,
+        description: 'API Key created successfully. The full key is returned only once.',
+        type: CreateApiKeyResponseDto,
+    })
     create(@Body() createApiKeyDto: CreateApiKeyDto, @GetUser() user: User) {
         return this.apiKeyService.create(createApiKeyDto, user);
     }

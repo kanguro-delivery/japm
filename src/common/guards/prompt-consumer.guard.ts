@@ -17,34 +17,40 @@ export class PromptConsumerGuard implements CanActivate {
     const user = request.user as AuthenticatedUser;
     const path = request.url;
 
+    this.logger.log(`[PromptConsumerGuard] Checking access for user to path: ${path}`);
+
     if (!user || !user.role) {
       this.logger.warn(
-        `[PromptConsumerGuard] DENIED: User or user.role not found.`,
+        `[PromptConsumerGuard] DENIED: Request is missing user or user.role. User object: ${JSON.stringify(user)}`,
       );
       throw new ForbiddenException(
-        'Authentication required. User details or role missing.',
+        'Access Denied: User details or role are missing from the request.',
       );
     }
 
+    // Ensure userRoles is always an array
     const userRoles = Array.isArray(user.role) ? user.role : [user.role];
 
+    this.logger.log(`[PromptConsumerGuard] User roles found: ${JSON.stringify(userRoles)}`);
+
     const allowedRoles = [Role.PROMPT_CONSUMER, Role.TENANT_ADMIN, Role.ADMIN];
+    this.logger.log(`[PromptConsumerGuard] Roles allowed for this route: ${JSON.stringify(allowedRoles)}`);
 
     const hasRequiredRole = userRoles.some((role) =>
       allowedRoles.includes(role),
     );
 
     if (!hasRequiredRole) {
-      this.logger.warn(
-        `[PromptConsumerGuard] DENIED: User (ID: ${user.id}, Tenant: ${user.tenantId}) has role(s) "${user.role}". Expected one of: "${allowedRoles.join(', ')}".`,
+      this.logger.error(
+        `[PromptConsumerGuard] PERMISSION DENIED: User (ID: ${user.id}, Tenant: ${user.tenantId}) with roles [${userRoles.join(', ')}] does not have any of the required roles [${allowedRoles.join(', ')}].`,
       );
       throw new ForbiddenException(
-        `Access denied. Required roles are ${allowedRoles.join(', ')}.`,
+        `Access Denied: Your roles [${userRoles.join(', ')}] are not sufficient to access this resource.`,
       );
     }
 
     this.logger.log(
-      `[PromptConsumerGuard] GRANTED: User (ID: ${user.id}, Tenant: ${user.tenantId}, Role(s): ${user.role}) to path ${path}`,
+      `[PromptConsumerGuard] ACCESS GRANTED: User (ID: ${user.id}, Tenant: ${user.tenantId}) has required role.`,
     );
     return true;
   }

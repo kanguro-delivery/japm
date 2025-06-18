@@ -38,7 +38,7 @@ export class ServePromptService {
   constructor(
     private prisma: PrismaService,
     // private templateService: TemplateService // Temporarily commented out
-  ) {}
+  ) { }
 
   /**
    * Resolves asset placeholders in a given text.
@@ -319,8 +319,11 @@ export class ServePromptService {
     const { variables } = body;
     const { currentDepth = 0, maxDepth = 5 } = context;
 
+    this.logger.log(
+      `[executePromptVersion] Initiating execution for prompt: "${promptName}" (v: ${versionTag || 'latest'}) in project: "${projectId}" with language: ${languageCode || 'base'}`,
+    );
     this.logger.debug(
-      `Executing prompt "${promptName}" v${versionTag} (project: ${projectId}, depth: ${currentDepth})`,
+      `[executePromptVersion] Variables received: ${JSON.stringify(variables)}`,
     );
 
     if (currentDepth >= maxDepth) {
@@ -328,182 +331,94 @@ export class ServePromptService {
         `Maximum depth (${maxDepth}) reached for prompt "${promptName}".`,
       );
       throw new BadRequestException(
-        `Maximum prompt reference depth (${maxDepth}) reached. Possible circular reference involving "${promptName}".`,
+        `Maximum depth (${maxDepth}) reached for prompt "${promptName}".`,
       );
     }
 
-    const promptNameSlug = slugify(promptName);
-    const currentProjectId = projectId;
-    let promptToExecute: (Partial<Prompt> & { versions?: any[] }) | null = null;
-    const isCuidLike =
-      promptName && promptName.length === 25 && promptName.startsWith('c');
+    const prompt = await this.prisma.prompt.findUnique({
+      where: {
+        prompt_id_project_unique: {
+          id: promptName,
+          projectId: projectId,
+        },
+      },
+      include: {
+        versions: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            translations: true,
+          },
+        },
+      },
+    });
 
-    if (isCuidLike) {
-      promptToExecute = await this.prisma.prompt.findUnique({
-        where: {
-          prompt_id_project_unique: {
-            id: promptName,
-            projectId: currentProjectId,
-          },
-        },
-        select: {
-          id: true,
-          name: true,
-          type: true,
-          projectId: true,
-          tenantId: true,
-        },
-      });
-    }
-    if (!promptToExecute) {
-      if (isCuidLike) {
-        this.logger.debug(
-          `🚀 [EXECUTE PROMPT] CUID-like input "${promptName}" not found by CUID lookup. Proceeding to other lookup methods.`,
-        );
-      }
-      this.logger.debug(
-        `🚀 [EXECUTE PROMPT] Input "${promptName}" not CUID-like or not found by CUID. Attempting direct ID lookup in project "${currentProjectId}".`,
-      );
-      // Attempt 1: Treat promptName as a potential pre-existing ID
-      promptToExecute = await this.prisma.prompt.findUnique({
-        where: {
-          prompt_id_project_unique: {
-            id: promptName,
-            projectId: currentProjectId,
-          },
-        },
-        select: {
-          id: true,
-          name: true,
-          type: true,
-          projectId: true,
-          tenantId: true,
-        },
-      });
-
-      if (!promptToExecute) {
-        // Attempt 2: Treat promptName as a name/slug to be slugified
-        const nameToSearch = slugify(promptName);
-        this.logger.debug(
-          `🚀 [EXECUTE PROMPT] Prompt not found by direct ID lookup. Attempting to fetch by slugified name: "${nameToSearch}" (original input: "${promptName}") in project "${currentProjectId}"`,
-        );
-        promptToExecute = await this.prisma.prompt.findUnique({
-          where: {
-            prompt_id_project_unique: {
-              id: nameToSearch, // Using slugified name as the ID here based on schema
-              projectId: currentProjectId,
-            },
-          },
-          // Fetch versions only when we are confident this is the prompt (by slug)
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            projectId: true,
-            tenantId: true,
-            versions: {
-              orderBy: { createdAt: 'desc' },
-              include: { translations: true },
-            },
-          },
-        });
-      }
-    }
-
-    if (!promptToExecute || !promptToExecute.id) {
+    if (!prompt) {
       this.logger.error(
-        `Prompt "${promptName}" not found in project "${currentProjectId}".`,
+        `[executePromptVersion] Prompt with name/id "${promptName}" not found in project "${projectId}".`,
       );
       throw new NotFoundException(
-        `Prompt "${promptName}" not found in project "${currentProjectId}".`,
+        `Prompt with name/id "${promptName}" not found in project "${projectId}"`,
       );
     }
-    if (!promptToExecute.versions) {
-      const tempPromptWithVersions = await this.prisma.prompt.findUnique({
-        where: {
-          prompt_id_project_unique: {
-            id: promptToExecute.id,
-            projectId: currentProjectId,
-          },
-        },
-        select: {
-          versions: {
-            orderBy: { createdAt: 'desc' },
-            include: { translations: true },
-          },
-        },
-      });
-      promptToExecute.versions = tempPromptWithVersions?.versions || [];
-    }
-    const resolvedPrompt = promptToExecute as Prompt & {
-      versions: (PromptVersion & { translations: PromptTranslation[] })[];
-    };
+    this.logger.log(`[executePromptVersion] Found prompt ID: ${prompt.id}`);
 
-    if (processedPrompts.has(promptNameSlug)) {
-      this.logger.warn(
-        `Circular reference for prompt "${promptName}" (slug: "${promptNameSlug}"). Path: ${Array.from(processedPrompts).join(' -> ')} -> ${promptNameSlug}`,
-      );
-      throw new BadRequestException(
-        `Circular reference detected for prompt "${promptName}". Path: ${Array.from(processedPrompts).join(' -> ')} -> ${promptNameSlug}`,
-      );
-    }
-    processedPrompts.add(promptNameSlug);
+    let targetVersion: (typeof prompt.versions)[0] | undefined;
 
+    if (versionTag && versionTag.toLowerCase() !== 'latest') {
+      targetVersion = prompt.versions.find(
+        (v) => v.versionTag === versionTag,
+      );
+      if (!targetVersion) {
+        this.logger.error(
+          `[executePromptVersion] Version with tag "${versionTag}" for prompt "${prompt.name}" not found.`,
+        );
+        throw new NotFoundException(
+          `Version with tag "${versionTag}" for prompt "${prompt.name}" not found.`,
+        );
+      }
+    } else {
+      targetVersion = prompt.versions.find(
+        (v) => v.status === 'active',
+      );
+      if (!targetVersion) {
+        this.logger.error(
+          `[executePromptVersion] No active version found for prompt "${prompt.name}" and "latest" was requested.`,
+        );
+        throw new NotFoundException(
+          `No active version found for prompt "${prompt.name}".`,
+        );
+      }
+    }
     this.logger.log(
-      `Processing prompt "${resolvedPrompt.name}" (ID: "${resolvedPrompt.id}", Type: ${resolvedPrompt.type})`,
+      `[executePromptVersion] Resolved to version ID: ${targetVersion.id} (Tag: ${targetVersion.versionTag}, Status: ${targetVersion.status})`,
     );
 
-    let textForProcessing: string = '';
-    let versionUsedForProcessing:
-      | (typeof resolvedPrompt.versions)[0]
-      | undefined = undefined;
-    let languageUsedInVersion = 'base_language';
+    let promptText = targetVersion.promptText;
+    let languageSource = 'base_prompt';
 
-    if (resolvedPrompt.versions && resolvedPrompt.versions.length > 0) {
-      const targetVersionTag = versionTag === 'latest' ? undefined : versionTag;
-      if (targetVersionTag) {
-        versionUsedForProcessing = resolvedPrompt.versions.find(
-          (v) => v.versionTag === targetVersionTag,
-        );
-      }
-      if (!versionUsedForProcessing) {
-        versionUsedForProcessing = resolvedPrompt.versions[0];
-      }
-    }
-    if (!versionUsedForProcessing) {
-      throw new NotFoundException(
-        `No version for prompt "${resolvedPrompt.name}" (tag: ${versionTag || 'latest'}).`,
-      );
-    }
-
-    // Minimal debug for version used
-    this.logger.debug(`Using version ID: ${versionUsedForProcessing.id}`);
-
-    textForProcessing = versionUsedForProcessing.promptText;
-    languageUsedInVersion = 'base_language';
-    if (languageCode && versionUsedForProcessing.translations?.length) {
-      const translation = versionUsedForProcessing.translations.find(
+    if (languageCode && targetVersion.translations?.length) {
+      const translation = targetVersion.translations.find(
         (t) => t.languageCode === languageCode,
       );
       if (translation) {
-        textForProcessing = translation.promptText;
-        languageUsedInVersion = languageCode;
+        promptText = translation.promptText;
+        languageSource = languageCode;
       } else {
-        languageUsedInVersion = 'base_language_fallback';
+        languageSource = 'base_language_fallback';
       }
     }
 
-    if (resolvedPrompt.type === 'TEMPLATE') {
+    if (prompt.type === 'TEMPLATE') {
       this.logger.log(
-        `Prompt "${resolvedPrompt.name}" is TEMPLATE, content will be processed.`,
+        `Prompt "${prompt.name}" is TEMPLATE, content will be processed.`,
       );
     }
 
     const { processedText: textWithAssetsAndVars, resolvedAssetsMetadata } =
       await this.resolveAssets(
-        textForProcessing,
-        resolvedPrompt.id,
-        resolvedPrompt.projectId,
+        promptText,
+        prompt.id,
+        prompt.projectId,
         languageCode,
         variables,
       );
@@ -512,25 +427,25 @@ export class ServePromptService {
       resolvedPromptsMetadata,
     } = await this.resolvePromptReferences(
       textWithAssetsAndVars,
-      resolvedPrompt.projectId,
+      prompt.projectId,
       body,
       languageCode,
       processedPrompts,
       {
-        currentPromptType: resolvedPrompt.type,
+        currentPromptType: prompt.type,
         currentDepth: currentDepth,
         maxDepth,
       },
     );
 
     const metadata = {
-      projectId: currentProjectId,
-      promptName: resolvedPrompt.name,
-      promptId: resolvedPrompt.id,
-      promptType: resolvedPrompt.type,
-      promptVersionId: versionUsedForProcessing.id,
-      promptVersionTag: versionUsedForProcessing.versionTag,
-      languageUsed: languageUsedInVersion,
+      projectId: projectId,
+      promptName: prompt.name,
+      promptId: prompt.id,
+      promptType: prompt.type,
+      promptVersionId: targetVersion.id,
+      promptVersionTag: targetVersion.versionTag,
+      languageUsed: languageSource,
       assetsUsed: resolvedAssetsMetadata,
       variablesProvided: Object.keys(variables || {}),
       resolvedPrompts: resolvedPromptsMetadata,

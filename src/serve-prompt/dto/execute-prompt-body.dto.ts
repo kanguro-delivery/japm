@@ -1,6 +1,7 @@
-import { IsObject } from 'class-validator';
+import { IsObject, IsOptional } from 'class-validator';
 
 export class ExecutePromptBodyDto {
   @IsObject()
-  variables: Record<string, any>;
+  @IsOptional()
+  variables?: Record<string, any>;
 }
