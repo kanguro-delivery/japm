@@ -101,6 +101,8 @@ model User {
   authoredMarketplaceAssetRequests PromptAssetVersion[] @relation("AuthoredMarketplaceAssetRequests")
   approvedMarketplaceAssetRequests PromptAssetVersion[] @relation("ApprovedMarketplaceAssetRequests")
 
+  apiKeys ApiKey[]
+
   @@index([tenantId])
 }
 
@@ -479,4 +481,21 @@ model ActivityLog {
   @@index([entityId])
   @@index([userId])
   @@index([projectId])
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  name       String
+  hashedKey  String    @unique
+  prefix     String    @unique
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  expiresAt  DateTime?
+  lastUsedAt DateTime?
+  revoked    Boolean   @default(false)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

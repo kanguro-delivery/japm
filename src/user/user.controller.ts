@@ -30,7 +30,6 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { User } from '@prisma/client'; // Import User type from Prisma
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
@@ -49,7 +48,7 @@ interface RequestWithUser extends Request {
 
 @ApiTags('Users')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(RolesGuard)
 @Roles(Role.ADMIN, Role.TENANT_ADMIN)
 @Controller('users')
 export class UserController {
@@ -140,7 +139,13 @@ export class UserController {
     description:
       'Retrieves a list of users. For tenant_admins, can optionally specify a tenantId to list users from that tenant.',
   })
-  @ApiQuery({ type: ListUsersDto })
+  @ApiQuery({
+    name: 'tenantId',
+    description:
+      'Optional tenant ID to filter users. Only for tenant_admins. Can be a UUID or "default-tenant"',
+    required: false,
+    type: String,
+  })
   @ApiResponse({
     status: 200,
     description: 'List of users retrieved successfully',
@@ -336,7 +341,7 @@ export class UserController {
   }
 
   @Patch(':id/credentials')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Update user credentials' })
   @ApiParam({ name: 'id', description: 'User ID' })

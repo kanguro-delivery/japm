@@ -36,6 +36,8 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { ActivityLogModule } from './services/activity-log.module';
 import { ActivityLogService } from './services/activityLogService';
 import configuration from './config/configuration';
+import { ApiKeyModule } from './api-key/api-key.module';
+import { ApiKeyOrJwtGuard } from './auth/guards/api-key-or-jwt.guard';
 
 @Module({
   imports: [
@@ -104,6 +106,7 @@ import configuration from './config/configuration';
     MarketplaceModule,
     DashboardModule,
     ActivityLogModule,
+    ApiKeyModule,
   ],
   controllers: [AppController],
   providers: [
@@ -116,6 +119,10 @@ import configuration from './config/configuration';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ApiKeyOrJwtGuard,
     },
   ],
 })

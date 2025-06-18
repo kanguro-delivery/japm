@@ -160,17 +160,7 @@
             "name": "tenantId",
             "required": false,
             "in": "query",
-            "description": "Optional tenant ID to filter users. Only used if the requesting user is a tenant_admin. Can be a UUID or \"default-tenant\"",
-            "schema": {
-              "pattern": "/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^default-tenant$/",
-              "type": "string"
-            }
-          },
-          {
-            "required": false,
-            "description": "Optional tenant ID to filter users. Only used if the requesting user is a tenant_admin. Can be a UUID or \"default-tenant\"",
-            "name": "tenantId",
-            "in": "query",
+            "description": "Optional tenant ID to filter users. Only for tenant_admins. Can be a UUID or \"default-tenant\"",
             "schema": {
               "pattern": "/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^default-tenant$/",
               "type": "string"
@@ -547,6 +537,147 @@
         "summary": "Check if initial setup is needed",
         "tags": [
           "Authentication"
+        ]
+      }
+    },
+    "/api/api-keys": {
+      "post": {
+        "operationId": "ApiKeyController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiKeyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a new API Key for the current user",
+        "tags": [
+          "ApiKeys"
+        ]
+      },
+      "get": {
+        "operationId": "ApiKeyController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List all API Keys for the current user",
+        "tags": [
+          "ApiKeys"
+        ]
+      }
+    },
+    "/api/api-keys/{id}": {
+      "get": {
+        "operationId": "ApiKeyController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a specific API Key for the current user",
+        "tags": [
+          "ApiKeys"
+        ]
+      },
+      "patch": {
+        "operationId": "ApiKeyController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateApiKeyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update an API Key for the current user",
+        "tags": [
+          "ApiKeys"
+        ]
+      },
+      "delete": {
+        "operationId": "ApiKeyController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke an API Key for the current user",
+        "tags": [
+          "ApiKeys"
         ]
       }
     },
@@ -6355,6 +6486,25 @@
         "required": [
           "access_token"
         ]
+      },
+      "CreateApiKeyDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateApiKeyDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
       },
       "CreateRegionDto": {
         "type": "object",
