@@ -6,7 +6,6 @@ import {
   Patch,
   Param,
   Delete,
-  ParseUUIDPipe,
   UseGuards,
   Request,
   UnauthorizedException,
@@ -24,7 +23,7 @@ import {
   ApiParam,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { Project, Prisma, User } from '@prisma/client';
+import { Project, User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Logger } from '@nestjs/common';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -165,12 +164,12 @@ export class ProjectController {
     );
   }
 
-  @Get(':id')
+  @Get(':projectSlug')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
-    summary: 'Get project by ID',
+    summary: 'Get project by ID (slug)',
     description:
-      'Retrieves a specific project by its unique ID. Results are cached for 1 hour.',
+      'Retrieves a specific project by its unique slug. Results are cached for 1 hour.',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -180,22 +179,21 @@ export class ProjectController {
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
     description:
-      'Project not found - The specified ID does not exist for this tenant',
+      'Project not found - The specified slug does not exist for this tenant',
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
     description: 'Unauthorized - Invalid or expired token',
   })
   @ApiParam({
-    name: 'id',
+    name: 'projectSlug',
     type: 'string',
-    format: 'uuid',
-    description: 'Unique project identifier (UUID)',
+    description: 'Unique project slug',
     required: true,
   })
   @CacheKey('project')
   @CacheTTL(3600)
-  findOne(@Param('id') id: string, @Req() req: RequestWithUser): Promise<ProjectDto> {
+  findOne(@Param('projectSlug') projectSlug: string, @Req() req: RequestWithUser): Promise<ProjectDto> {
     const tenantId = req.user.tenantId;
     if (!tenantId) {
       this.logger.error(
@@ -203,14 +201,20 @@ export class ProjectController {
       );
       throw new UnauthorizedException('User tenant information is missing');
     }
-    return this.projectService.findOne(id, tenantId);
+    return this.projectService.findOne(projectSlug, tenantId);
   }
 
-  @Patch(':id')
+  @Patch(':projectSlug')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
-    summary: 'Update project',
-    description: 'Updates an existing project by ID.',
+    summary: 'Update project by slug',
+    description: 'Updates an existing project by its slug.',
+  })
+  @ApiParam({
+    name: 'projectSlug',
+    type: 'string',
+    description: 'Unique project slug of the project to update',
+    required: true,
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -226,12 +230,12 @@ export class ProjectController {
     description: 'Unauthorized - Invalid or expired token',
   })
   update(
-    @Param('id') id: string,
+    @Param('projectSlug') projectSlug: string,
     @Body() updateProjectDto: UpdateProjectDto,
     @Req() req: RequestWithUser,
   ): Promise<ProjectDto> {
     this.logger.debug(
-      `[update] Received PATCH request for project ${id}. Body: ${JSON.stringify(
+      `[update] Received PATCH request for project ${projectSlug}. Body: ${JSON.stringify(
         updateProjectDto,
         null,
         2,
@@ -245,28 +249,27 @@ export class ProjectController {
       );
       throw new UnauthorizedException('User or tenant information is missing');
     }
-    return this.projectService.update(id, updateProjectDto, tenantId, userId);
+    return this.projectService.update(projectSlug, updateProjectDto, tenantId, userId);
   }
 
-  @Delete(':id')
+  @Delete(':projectSlug')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
-    summary: 'Delete project',
-    description: 'Deletes a project by ID.',
+    summary: 'Delete project by slug',
+    description: 'Deletes an existing project by its slug.'
   })
-  @ApiResponse({
-    status: HttpStatus.NO_CONTENT,
-    description: 'Project deleted successfully',
+  @ApiParam({
+    name: 'projectSlug',
+    type: 'string',
+    description: 'Unique project slug of the project to delete',
+    required: true,
   })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Project not found',
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Unauthorized - Invalid or expired token',
-  })
-  async remove(@Param('id') id: string, @Req() req: RequestWithUser): Promise<void> {
+  @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Project deleted successfully' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Project not found' })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Forbidden' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(@Param('projectSlug') projectSlug: string, @Req() req: RequestWithUser): Promise<void> {
     const tenantId = req.user.tenantId;
     const userId = req.user.id;
     if (!tenantId || !userId) {
@@ -275,6 +278,6 @@ export class ProjectController {
       );
       throw new UnauthorizedException('User or tenant information is missing');
     }
-    await this.projectService.remove(id, tenantId, userId);
+    await this.projectService.remove(projectSlug, tenantId, userId);
   }
 }

@@ -12,6 +12,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service'; // Corrected path assuming standard structure
 import { Reflector } from '@nestjs/core'; // Import Reflector
 import { AuthenticatedUser } from '../types/request.types';
+import { Role } from 'src/auth/enums/role.enum';
 // import { validate as isUuid } from 'uuid'; // O usa class-validator si prefieres
 // Asumiendo CUIDs para IDs de proyecto
 
@@ -94,10 +95,20 @@ export class ProjectGuard implements CanActivate {
       request[projectIdParamName] = projectId; // Or set it dynamically if other parts rely on this specific key
       request.validatedProjectId = projectId; // A new, consistently named property
 
-      this.logger.log(
-        `[ProjectGuard] GRANTED for User ID: "${user.id}", TenantID: "${user.tenantId}" to Project: "${project.name}" (ID: "${projectId}")`,
+      if (user.role === Role.ADMIN || user.tenantId === project.tenantId) {
+        this.logger.debug(
+          `[ProjectGuard] GRANTED for User ID: "${user.id}", TenantID: "${user.tenantId}" to Project: "${project.name}" (ID: "${projectId}")`,
+        );
+        return true;
+      }
+
+      // If the above condition is not met, deny access.
+      this.logger.warn(
+        `[ProjectGuard] DENIED: User (ID: ${user.id}) is not an ADMIN and tenantId does not match project's tenantId.`,
       );
-      return true;
+      throw new ForbiddenException(
+        `Access denied to project ${projectId}.`,
+      );
     } catch (error) {
       this.logger.error(
         `[ProjectGuard] EXCEPTION during project validation: ${error.message}`,
@@ -115,12 +126,12 @@ export class ProjectGuard implements CanActivate {
 
       // Log unexpected errors
       this.logger.error(
-        `[ProjectGuard] Unexpected error in ProjectGuard for projectId ${projectId} (param: ${projectIdParamName}) and userId ${user.id}:`,
-        error,
+        `[ProjectGuard] Unexpected error in ProjectGuard for projectId ${projectId} (param: ${projectIdParamName}) and userId ${user?.id}:`,
+        error instanceof Error ? error.stack : error,
       );
       // Throw a generic internal server error
       throw new InternalServerErrorException(
-        'Internal error during project access authorization.',
+        'Error validating project access',
       ); // Use NestJS exception
     }
   }

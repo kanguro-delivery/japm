@@ -81,7 +81,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     } catch (error) {
       this.logger.error(
         `Error during user lookup or validation for sub ${payload.sub}:`,
-        error.stack || error,
+        error instanceof Error ? error.stack : error,
       );
       if (error instanceof UnauthorizedException) {
         throw error;

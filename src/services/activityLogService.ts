@@ -102,8 +102,6 @@ export class ActivityLogService {
     } = data;
 
     try {
-      this.logger.debug(`Intentando registrar actividad: ${JSON.stringify(data)}`);
-
       const result = await this.prisma.activityLog.create({
         data: {
           id: crypto.randomUUID(),
@@ -117,9 +115,9 @@ export class ActivityLogService {
         },
       });
 
-      this.logger.debug(`Actividad registrada exitosamente: ${result.id}`);
+      this.logger.debug(`audit ok: ${result.id}`);
     } catch (error) {
-      this.logger.error(`Error al registrar actividad: ${error.message}`, error.stack);
+      this.logger.error(`audit error: ${error.message}`, error.stack);
       throw error;
     }
   }

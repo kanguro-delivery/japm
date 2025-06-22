@@ -1625,18 +1625,17 @@
         ]
       }
     },
-    "/api/projects/{id}": {
+    "/api/projects/{projectSlug}": {
       "get": {
-        "description": "Retrieves a specific project by its unique ID. Results are cached for 1 hour.",
+        "description": "Retrieves a specific project by its unique slug. Results are cached for 1 hour.",
         "operationId": "ProjectController_findOne",
         "parameters": [
           {
-            "name": "id",
+            "name": "projectSlug",
             "required": true,
             "in": "path",
-            "description": "Unique project identifier (UUID)",
+            "description": "Unique project slug",
             "schema": {
-              "format": "uuid",
               "type": "string"
             }
           }
@@ -1656,7 +1655,7 @@
             "description": "Unauthorized - Invalid or expired token"
           },
           "404": {
-            "description": "Project not found - The specified ID does not exist for this tenant"
+            "description": "Project not found - The specified slug does not exist for this tenant"
           }
         },
         "security": [
@@ -1664,19 +1663,20 @@
             "bearer": []
           }
         ],
-        "summary": "Get project by ID",
+        "summary": "Get project by ID (slug)",
         "tags": [
           "Projects"
         ]
       },
       "patch": {
-        "description": "Updates an existing project by ID.",
+        "description": "Updates an existing project by its slug.",
         "operationId": "ProjectController_update",
         "parameters": [
           {
-            "name": "id",
+            "name": "projectSlug",
             "required": true,
             "in": "path",
+            "description": "Unique project slug of the project to update",
             "schema": {
               "type": "string"
             }
@@ -1715,33 +1715,34 @@
             "bearer": []
           }
         ],
-        "summary": "Update project",
+        "summary": "Update project by slug",
         "tags": [
           "Projects"
         ]
       },
       "delete": {
-        "description": "Deletes a project by ID.",
+        "description": "Deletes an existing project by its slug.",
         "operationId": "ProjectController_remove",
         "parameters": [
           {
-            "name": "id",
+            "name": "projectSlug",
             "required": true,
             "in": "path",
+            "description": "Unique project slug of the project to delete",
             "schema": {
               "type": "string"
             }
           }
         ],
         "responses": {
-          "200": {
-            "description": ""
-          },
           "204": {
             "description": "Project deleted successfully"
           },
           "401": {
-            "description": "Unauthorized - Invalid or expired token"
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           },
           "404": {
             "description": "Project not found"
@@ -1752,7 +1753,7 @@
             "bearer": []
           }
         ],
-        "summary": "Delete project",
+        "summary": "Delete project by slug",
         "tags": [
           "Projects"
         ]
@@ -3541,6 +3542,78 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "includeAssets",
+            "required": false,
+            "in": "query",
+            "description": "If true, the response will include an array of all assets associated with the prompt.",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "processed",
+            "required": false,
+            "in": "query",
+            "description": "If true, the prompt is fully processed. If false, it returns the raw template. Defaults to true.",
+            "schema": {
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "languageCode",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentName",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "required": false,
+            "description": "If true, the response will include an array of all assets associated with the prompt.",
+            "name": "includeAssets",
+            "in": "query",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "required": false,
+            "description": "If true, the prompt is fully processed. If false, it returns the raw template. Defaults to true.",
+            "name": "processed",
+            "in": "query",
+            "schema": {
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          {
+            "required": false,
+            "name": "languageCode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "required": false,
+            "name": "environmentName",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -3562,7 +3635,8 @@
                 "schema": {
                   "example": {
                     "processedPrompt": "string",
-                    "metadata": {}
+                    "metadata": {},
+                    "assets": "PromptAsset[]"
                   }
                 }
               }
@@ -3634,6 +3708,70 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "includeAssets",
+            "required": false,
+            "in": "query",
+            "description": "If true, the response will include an array of all assets associated with the prompt.",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "processed",
+            "required": false,
+            "in": "query",
+            "description": "If true, the prompt is fully processed. If false, it returns the raw template. Defaults to true.",
+            "schema": {
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "environmentName",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "required": false,
+            "description": "If true, the response will include an array of all assets associated with the prompt.",
+            "name": "includeAssets",
+            "in": "query",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "required": false,
+            "description": "If true, the prompt is fully processed. If false, it returns the raw template. Defaults to true.",
+            "name": "processed",
+            "in": "query",
+            "schema": {
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          {
+            "required": false,
+            "name": "languageCode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "required": false,
+            "name": "environmentName",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -3655,7 +3793,8 @@
                 "schema": {
                   "example": {
                     "processedPrompt": "string",
-                    "metadata": {}
+                    "metadata": {},
+                    "assets": "PromptAsset[]"
                   }
                 }
               }

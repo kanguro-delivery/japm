@@ -73,26 +73,27 @@ export class ActivityLogInterceptor implements NestInterceptor {
         return projectId as string | null;
     }
 
-    private getUserId(request: AuthenticatedRequest): string | null {
-        // First try to get ID from user object
-        if (request.user?.id) {
-            return request.user.id;
-        }
-
-        // If not in user object, try to get it from JWT token
-        const authHeader = request.headers.authorization;
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            try {
-                const token = authHeader.split(' ')[1];
-                const decoded = this.jwtService.decode(token);
-                if (decoded && typeof decoded === 'object' && 'sub' in decoded) {
-                    return decoded.sub as string;
-                }
-            } catch (error) {
-                this.logger.warn(`Error decoding JWT token: ${error.message}`);
+    private getUserIdFromRequest(request: AuthenticatedRequest): string | null {
+        if (request.user) {
+            if (typeof request.user.id === 'string') {
+                return request.user.id;
             }
+            this.logger.warn(
+                '[ActivityLogInterceptor] User ID is not a string in authenticated request.',
+            );
         }
+        return null;
+    }
 
+    private isFromApiKey(request: any): boolean {
+        // Implement the logic to check if the request is from an API key
+        // This is a placeholder and should be replaced with the actual implementation
+        return false;
+    }
+
+    private getUserIdFromApiKey(request: any): string | null {
+        // Implement the logic to extract user ID from an API key
+        // This is a placeholder and should be replaced with the actual implementation
         return null;
     }
 
@@ -114,7 +115,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
             return next.handle();
         }
 
-        const userId = this.getUserId(request);
+        const userId = this.getUserIdFromRequest(request);
         const projectId = this.getProjectId(request);
 
         if (!userId || !projectId) {

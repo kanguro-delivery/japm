@@ -6,62 +6,50 @@ import {
   HttpException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  Prisma,
-  Prompt,
-  PromptVersion,
-  PromptTranslation,
-  Environment,
-  CulturalData,
-} from '@prisma/client';
-// import { TemplateService } from '../template/template.service'; // Temporarily commented out
 import { ExecutePromptParamsDto } from './dto/execute-prompt-params.dto';
-import { ExecutePromptQueryDto } from './dto/execute-prompt-query.dto';
 import { ExecutePromptBodyDto } from './dto/execute-prompt-body.dto';
+import { ExecutePromptQueryDto } from './dto/execute-prompt-query.dto';
+import { PromptAsset, PromptAssetVersion } from '@prisma/client';
 
-// Definición de la función slugify (copiada de prompt.service.ts)
-function slugify(text: string): string {
-  return text
-    .toString()
-    .normalize('NFKD') // Normalize to decompose combined graphemes
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-') // Replace spaces with -
-    .replace(/[^\w-]+/g, '') // Remove all non-word chars (keeps hyphen)
-    .replace(/--+/g, '-'); // Replace multiple - with single -
+type PromptAssetWithVersions = PromptAsset & {
+  versions: PromptAssetVersion[];
+};
+
+interface PromptExecutionMetadata {
+  projectId: string;
+  promptName: string;
+  promptId: string;
+  promptType: string;
+  promptVersionId: string;
+  promptVersionTag: string;
+  languageUsed: string;
+  assetsUsed: any[];
+  variablesProvided: string[];
+  resolvedPrompts: any[];
+  unresolvedPromptPlaceholders: string[];
 }
 
 @Injectable()
 export class ServePromptService {
   private readonly logger = new Logger(ServePromptService.name);
 
-  constructor(
-    private prisma: PrismaService,
-    // private templateService: TemplateService // Temporarily commented out
-  ) { }
+  constructor(private prisma: PrismaService) { }
 
-  /**
-   * Resolves asset placeholders in a given text.
-   * @param text The text containing potential asset placeholders.
-   * @param promptIdInput The ID of the prompt to scope asset search.
-   * @param projectIdInput The ID of the project to scope asset search.
-   * @param languageCode Optional language code for asset translation.
-   * @param inputVariables Optional map of variables to distinguish from assets.
-   * @param promptContext Optional prompt context for better logging
-   * @returns An object containing the processed text and metadata about resolved assets.
-   */
   async resolveAssets(
     text: string,
     promptIdInput: string,
     projectIdInput: string,
     languageCode?: string,
     inputVariables: Record<string, any> = {},
-  ): Promise<{ processedText: string; resolvedAssetsMetadata: any[] }> {
-    // Removed detailed debug logs from here for brevity in production
-
+  ): Promise<{
+    processedText: string;
+    resolvedAssetsMetadata: any[];
+    unresolvedVariables: string[];
+  }> {
     let processedText = text;
     const assetContext: Record<string, string> = {};
     const resolvedAssetsMetadata: any[] = [];
+    const unresolvedVariables: string[] = [];
 
     const allAssetMatches = [...text.matchAll(/\{\{asset:([^}]+)\}\}/g)];
 
@@ -69,7 +57,7 @@ export class ServePromptService {
       .filter((match) => {
         const placeholderContent = match[1].trim();
         const [key] = placeholderContent.split(':');
-        return !inputVariables.hasOwnProperty(key);
+        return !Object.prototype.hasOwnProperty.call(inputVariables, key);
       })
       .map((match) => {
         const placeholderContent = match[1].trim();
@@ -166,12 +154,13 @@ export class ServePromptService {
     for (const match of variablePlaceholders) {
       const placeholder = match[0];
       const variableName = match[1].trim();
-      if (inputVariables.hasOwnProperty(variableName)) {
+      if (Object.prototype.hasOwnProperty.call(inputVariables, variableName)) {
         variableContext[variableName] = String(inputVariables[variableName]);
       } else {
         this.logger.warn(
           `Variable "${variableName}" (referenced as "${placeholder}") not provided. Available: ${Object.keys(inputVariables).join(', ') || 'none'}`,
         );
+        unresolvedVariables.push(variableName);
       }
     }
 
@@ -193,23 +182,33 @@ export class ServePromptService {
         variableValue,
       );
     }
-    return { processedText, resolvedAssetsMetadata };
+
+    const simpleVarRegex = /\{\{(?!asset:|variable:)([^}]+?)\}\}/g;
+    const matches = [...processedText.matchAll(simpleVarRegex)];
+
+    for (const match of matches) {
+      const placeholder = match[0];
+      const varName = match[1].trim();
+      if (Object.prototype.hasOwnProperty.call(inputVariables, varName)) {
+        const valueToReplace = String(inputVariables[varName]);
+        processedText = processedText.split(placeholder).join(valueToReplace);
+      } else {
+        unresolvedVariables.push(varName);
+      }
+    }
+
+    return {
+      processedText,
+      resolvedAssetsMetadata,
+      unresolvedVariables: [...new Set(unresolvedVariables)],
+    };
   }
 
-  /**
-   * Resolves prompt references in a given text.
-   * @param text The text containing potential prompt references.
-   * @param currentProcessingProjectId The ID of the project to scope prompt search.
-   * @param body The body containing variables for the prompt.
-   * @param languageCode Optional language code for prompt translation.
-   * @param processedPrompts Set of already processed prompts to prevent circular references.
-   * @param context Additional context for prompt resolution
-   * @returns An object containing the processed text and metadata about resolved prompts.
-   */
   private async resolvePromptReferences(
     text: string,
     currentProcessingProjectId: string,
     body: ExecutePromptBodyDto,
+    query: ExecutePromptQueryDto,
     languageCode?: string,
     processedPrompts: Set<string> = new Set(),
     context: {
@@ -223,7 +222,7 @@ export class ServePromptService {
     const resolvedPromptsMetadata: any[] = [];
     const promptRefRegex =
       /\{\{prompt:(([^:}]+?)\/)?([^:}]+?)(?::([^}]+))?\}\}/g;
-    let match;
+    let match: RegExpExecArray | null;
 
     while ((match = promptRefRegex.exec(currentText)) !== null) {
       const fullMatch = match[0];
@@ -233,7 +232,6 @@ export class ServePromptService {
       const projectIdForNestedPrompt =
         specifiedProjectId || currentProcessingProjectId;
 
-      // Minimal debug log for reference found
       this.logger.debug(`Found prompt reference: ${fullMatch}`);
 
       const uniqueRefKey = `${projectIdForNestedPrompt}/${referencedPromptIdentifier}`;
@@ -245,7 +243,6 @@ export class ServePromptService {
       processedPrompts.add(uniqueRefKey);
 
       try {
-        // Minimal debug log for recursive call
         this.logger.debug(
           `Calling executePromptVersion for nested: ${uniqueRefKey}`,
         );
@@ -257,6 +254,7 @@ export class ServePromptService {
             languageCode: languageCode,
           },
           body,
+          query,
           new Set(processedPrompts),
           {
             currentDepth: currentDepth + 1,
@@ -286,13 +284,15 @@ export class ServePromptService {
           );
           throw error;
         }
+        const message = error instanceof Error ? error.message : String(error);
+        const stack = error instanceof Error ? error.stack : undefined;
         this.logger.error(
-          `Unexpected error during recursive call for "${uniqueRefKey}": ${error.message}`,
-          error.stack,
+          `Unexpected error during recursive call for "${uniqueRefKey}": ${message}`,
+          stack,
         );
         resolvedPromptsMetadata.push({
           type: 'error',
-          message: `Failed to resolve nested prompt: ${referencedPromptIdentifier}. Error: ${error.message}`,
+          message: `Failed to resolve nested prompt: ${referencedPromptIdentifier}. Error: ${message}`,
           promptIdentifier: referencedPromptIdentifier,
           projectId: projectIdForNestedPrompt,
         });
@@ -301,20 +301,20 @@ export class ServePromptService {
     return { processedText: currentText, resolvedPromptsMetadata };
   }
 
-  /**
-   * Executes a specific prompt version with given variables.
-   * Handles translation, asset substitution, and prompt references.
-   * @returns The processed prompt text ready for execution.
-   */
   async executePromptVersion(
     params: ExecutePromptParamsDto,
     body: ExecutePromptBodyDto,
+    query: ExecutePromptQueryDto = {},
     processedPrompts: Set<string> = new Set(),
     context: {
       currentDepth?: number;
       maxDepth?: number;
     } = {},
-  ): Promise<{ processedPrompt: string; metadata: any }> {
+  ): Promise<{
+    processedPrompt: string;
+    metadata: PromptExecutionMetadata;
+    assets?: any[];
+  }> {
     const { projectId, promptName, versionTag, languageCode } = params;
     const { variables } = body;
     const { currentDepth = 0, maxDepth = 5 } = context;
@@ -349,6 +349,16 @@ export class ServePromptService {
             translations: true,
           },
         },
+        assets: query?.includeAssets
+          ? {
+            include: {
+              versions: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+              },
+            },
+          }
+          : false,
       },
     });
 
@@ -365,9 +375,7 @@ export class ServePromptService {
     let targetVersion: (typeof prompt.versions)[0] | undefined;
 
     if (versionTag && versionTag.toLowerCase() !== 'latest') {
-      targetVersion = prompt.versions.find(
-        (v) => v.versionTag === versionTag,
-      );
+      targetVersion = prompt.versions.find((v) => v.versionTag === versionTag);
       if (!targetVersion) {
         this.logger.error(
           `[executePromptVersion] Version with tag "${versionTag}" for prompt "${prompt.name}" not found.`,
@@ -377,15 +385,15 @@ export class ServePromptService {
         );
       }
     } else {
-      targetVersion = prompt.versions.find(
-        (v) => v.status === 'active',
-      );
+      targetVersion =
+        prompt.versions.find((v) => v.status === 'active') ||
+        prompt.versions[0];
       if (!targetVersion) {
         this.logger.error(
-          `[executePromptVersion] No active version found for prompt "${prompt.name}" and "latest" was requested.`,
+          `[executePromptVersion] No versions found for prompt "${prompt.name}".`,
         );
         throw new NotFoundException(
-          `No active version found for prompt "${prompt.name}".`,
+          `No versions found for prompt "${prompt.name}".`,
         );
       }
     }
@@ -408,20 +416,61 @@ export class ServePromptService {
       }
     }
 
+    if (query.processed === false) {
+      this.logger.log(
+        `[executePromptVersion] Bypassing processing for prompt "${prompt.name}" as requested.`,
+      );
+      const metadata: PromptExecutionMetadata = {
+        projectId: projectId,
+        promptName: prompt.name,
+        promptId: prompt.id,
+        promptType: prompt.type,
+        promptVersionId: targetVersion.id,
+        promptVersionTag: targetVersion.versionTag,
+        languageUsed: languageSource,
+        assetsUsed: [],
+        variablesProvided: Object.keys(variables || {}),
+        resolvedPrompts: [],
+        unresolvedPromptPlaceholders: [],
+      };
+      const formattedAssets =
+        query?.includeAssets && prompt.assets
+          ? (prompt.assets as PromptAssetWithVersions[]).map((asset) => ({
+            id: asset.id,
+            key: asset.key,
+            enabled: asset.enabled,
+            versions: asset.versions.map((version) => ({
+              id: version.id,
+              value: version.value,
+              versionTag: version.versionTag,
+              languageCode: version.languageCode,
+            })),
+          }))
+          : undefined;
+      return {
+        processedPrompt: promptText,
+        metadata,
+        assets: formattedAssets,
+      };
+    }
+
     if (prompt.type === 'TEMPLATE') {
       this.logger.log(
         `Prompt "${prompt.name}" is TEMPLATE, content will be processed.`,
       );
     }
 
-    const { processedText: textWithAssetsAndVars, resolvedAssetsMetadata } =
-      await this.resolveAssets(
-        promptText,
-        prompt.id,
-        prompt.projectId,
-        languageCode,
-        variables,
-      );
+    const {
+      processedText: textWithAssetsAndVars,
+      resolvedAssetsMetadata,
+      unresolvedVariables,
+    } = await this.resolveAssets(
+      promptText,
+      prompt.id,
+      prompt.projectId,
+      languageCode,
+      variables,
+    );
     const {
       processedText: finalTextAfterRefResolution,
       resolvedPromptsMetadata,
@@ -429,6 +478,7 @@ export class ServePromptService {
       textWithAssetsAndVars,
       prompt.projectId,
       body,
+      query,
       languageCode,
       processedPrompts,
       {
@@ -438,7 +488,7 @@ export class ServePromptService {
       },
     );
 
-    const metadata = {
+    const metadata: PromptExecutionMetadata = {
       projectId: projectId,
       promptName: prompt.name,
       promptId: prompt.id,
@@ -449,8 +499,30 @@ export class ServePromptService {
       assetsUsed: resolvedAssetsMetadata,
       variablesProvided: Object.keys(variables || {}),
       resolvedPrompts: resolvedPromptsMetadata,
+      unresolvedPromptPlaceholders: unresolvedVariables,
     };
 
-    return { processedPrompt: finalTextAfterRefResolution, metadata };
+    let formattedAssets;
+    if (query?.includeAssets && prompt.assets) {
+      formattedAssets = (prompt.assets as PromptAssetWithVersions[]).map(
+        (asset) => ({
+          id: asset.id,
+          key: asset.key,
+          enabled: asset.enabled,
+          versions: asset.versions.map((version) => ({
+            id: version.id,
+            value: version.value,
+            versionTag: version.versionTag,
+            languageCode: version.languageCode,
+          })),
+        }),
+      );
+    }
+
+    return {
+      processedPrompt: finalTextAfterRefResolution,
+      metadata,
+      assets: formattedAssets,
+    };
   }
 }

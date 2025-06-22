@@ -38,12 +38,7 @@ import { UpdateUserCredentialsDto } from './dto/update-user-credentials.dto';
 import { AuthenticatedRequest } from '../common/types/request.types';
 
 interface RequestWithUser extends Request {
-  user?: {
-    id: string;
-    email: string;
-    tenantId: string;
-    role: Role;
-  };
+  user: AuthenticatedRequest['user']; // Use the type from AuthenticatedRequest
 }
 
 @ApiTags('Users')
@@ -356,7 +351,7 @@ export class UserController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserCredentialsDto: UpdateUserCredentialsDto,
     @Request() req: AuthenticatedRequest,
-  ) {
+  ): Promise<User> {
     return this.userService.update(
       id,
       updateUserCredentialsDto,

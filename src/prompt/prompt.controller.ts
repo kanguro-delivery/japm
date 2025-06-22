@@ -55,15 +55,15 @@ export class PromptController {
   @ApiOperation({ summary: 'Create a new prompt' })
   @ApiParam({ name: 'projectId', description: 'Project ID' })
   @ApiResponse({ status: 201, description: 'Prompt created successfully' })
-  async create(@Body() createDto: CreatePromptDto, @Param('projectId') projectId: string, @Req() req: AuthenticatedRequest) {
+  async create(@Body() createPromptDto: CreatePromptDto, @Param('projectId') projectId: string, @Req() req: AuthenticatedRequest) {
     if (!req.user) {
       throw new UnauthorizedException('No autenticado');
     }
     return this.promptService.create(
-      createDto,
+      createPromptDto,
       projectId,
       req.user.tenantId,
-      req.user.id
+      req.user.id,
     );
   }
 
@@ -75,7 +75,7 @@ export class PromptController {
   async update(
     @Param('id') id: string,
     @Param('projectId') projectId: string,
-    @Body() updateDto: UpdatePromptDto,
+    @Body() updatePromptDto: UpdatePromptDto,
     @Req() req: AuthenticatedRequest
   ) {
     if (!req.user) {
@@ -83,10 +83,10 @@ export class PromptController {
     }
     return this.promptService.update(
       id,
-      updateDto,
+      updatePromptDto,
       projectId,
       req.user.tenantId,
-      req.user.id
+      req.user.id,
     );
   }
 
@@ -98,7 +98,7 @@ export class PromptController {
   async partialUpdate(
     @Param('id') id: string,
     @Param('projectId') projectId: string,
-    @Body() updateDto: UpdatePromptDto,
+    @Body() updatePromptDto: UpdatePromptDto,
     @Req() req: AuthenticatedRequest
   ) {
     if (!req.user) {
@@ -106,10 +106,10 @@ export class PromptController {
     }
     return this.promptService.update(
       id,
-      updateDto,
+      updatePromptDto,
       projectId,
       req.user.tenantId,
-      req.user.id
+      req.user.id,
     );
   }
 

@@ -124,8 +124,8 @@ export class AuthController {
   })
   @HttpCode(HttpStatus.OK)
   @ThrottleAuth()
-  login(@Request() req: AuthenticatedRequest): { access_token: string } {
-    return this.authService.login(req.user as Omit<User, 'password'>);
+  login(@Request() req: { user: User }): { access_token: string } {
+    return this.authService.login(req.user);
   }
 
   @Get('profile')

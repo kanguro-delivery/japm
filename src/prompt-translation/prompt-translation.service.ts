@@ -2,14 +2,13 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  ForbiddenException,
   Logger,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { CreatePromptTranslationDto } from './dto/create-prompt-translation.dto';
 import { UpdatePromptTranslationDto } from './dto/update-prompt-translation.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma, PromptTranslation, PromptVersion } from '@prisma/client';
+import { Prisma, PromptTranslation } from '@prisma/client';
 import { CreateOrUpdatePromptTranslationDto } from './dto/create-or-update-prompt-translation.dto';
 import { ServePromptService } from '../serve-prompt/serve-prompt.service';
 import { ResolveAssetsQueryDto } from '../serve-prompt/dto/resolve-assets-query.dto';
@@ -23,7 +22,7 @@ export class PromptTranslationService {
     private prisma: PrismaService,
     private servePromptService: ServePromptService,
     private promptVersionService: PromptVersionService,
-  ) {}
+  ) { }
 
   async create(
     projectId: string,
@@ -122,6 +121,7 @@ export class PromptTranslationService {
           {
             variables,
           },
+          {},
           new Set(),
           {
             currentDepth: 0,
@@ -142,14 +142,17 @@ export class PromptTranslationService {
           processed: true,
           unresolvedPromptPlaceholders:
             result.metadata?.unresolvedPromptPlaceholders || [],
+          assets: result.assets,
         };
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const stack = error instanceof Error ? error.stack : undefined;
         this.logger.error(
-          `Error processing translation: ${error.message}`,
-          error.stack,
+          `Error processing translation: ${message}`,
+          stack,
         );
         throw new InternalServerErrorException(
-          `Error processing translation: ${error.message}`,
+          `Error processing translation: ${message}`,
         );
       }
     } else if (query?.resolveAssets) {

@@ -31,22 +31,26 @@ export class PromptConsumerGuard implements CanActivate {
     // Ensure userRoles is always an array
     const userRoles = Array.isArray(user.role) ? user.role : [user.role];
 
-    this.logger.log(`[PromptConsumerGuard] User roles found: ${JSON.stringify(userRoles)}`);
+    this.logger.log(`[PromptConsumerGuard] User roles found: ["${userRoles.join("', '")}"]`);
 
     const allowedRoles = [Role.PROMPT_CONSUMER, Role.TENANT_ADMIN, Role.ADMIN];
-    this.logger.log(`[PromptConsumerGuard] Roles allowed for this route: ${JSON.stringify(allowedRoles)}`);
+    this.logger.log(`[PromptConsumerGuard] Roles allowed for this route: ["${allowedRoles.join(
+      "', '",
+    )}"]`);
 
     const hasRequiredRole = userRoles.some((role) =>
       allowedRoles.includes(role),
     );
 
     if (!hasRequiredRole) {
-      this.logger.error(
-        `[PromptConsumerGuard] PERMISSION DENIED: User (ID: ${user.id}, Tenant: ${user.tenantId}) with roles [${userRoles.join(', ')}] does not have any of the required roles [${allowedRoles.join(', ')}].`,
+      this.logger.warn(
+        `[PromptConsumerGuard] PERMISSION DENIED: User (ID: ${user.id}, Tenant: ${user.tenantId}) with roles [${userRoles.join(
+          "', '",
+        )}] does not have any of the required roles [${allowedRoles.join(
+          "', '",
+        )}].`,
       );
-      throw new ForbiddenException(
-        `Access Denied: Your roles [${userRoles.join(', ')}] are not sufficient to access this resource.`,
-      );
+      throw new ForbiddenException('Insufficient permissions.');
     }
 
     this.logger.log(

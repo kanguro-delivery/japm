@@ -30,8 +30,8 @@ export class AuthService {
   }
 
   // Used by AuthController /login after LocalAuthGuard
-  login(user: Omit<User, 'password'>): { access_token: string } {
-    // user here is the object returned by LocalStrategy.validate (without password)
+  login(user: User): { access_token: string } {
+    // user here is the object returned by LocalStrategy.validate
     const payload: JwtPayload = {
       email: user.email,
       sub: user.id,

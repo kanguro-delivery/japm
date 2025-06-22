@@ -166,7 +166,7 @@ export class PromptVersionService {
       console.log(
         `🚨🚨🚨 [SUPER OBVIOUS PROMPT-VERSION] About to call ServePromptService.executePromptVersion! 🚨🚨🚨`,
       );
-      const { processedPrompt } =
+      const { processedPrompt, metadata } =
         await this.servePromptService.executePromptVersion(
           {
             projectId,
@@ -177,6 +177,7 @@ export class PromptVersionService {
           {
             variables: query.variables ? JSON.parse(query.variables) : {},
           },
+          {}, // query
           new Set(), // processedPrompts - empty set for new resolution chain
           {
             currentDepth: 0,
@@ -196,10 +197,13 @@ export class PromptVersionService {
 
       // Check if prompt references were resolved by looking for remaining placeholders
       const remainingPlaceholders =
-        processedPrompt.match(/\{\{prompt:[^}]+\}\}/g);
-      if (remainingPlaceholders) {
+        metadata.unresolvedPromptPlaceholders;
+      if (remainingPlaceholders && remainingPlaceholders.length > 0) {
         this.logger.warn(
-          `⚠️ [PROCESSED PROMPT] Found ${remainingPlaceholders.length} unresolved prompt placeholder(s): ${remainingPlaceholders.join(', ')}`,
+          `⚠️ [PROCESSED PROMPT] Found ${remainingPlaceholders.length
+          } unresolved prompt placeholder(s): ${remainingPlaceholders.join(
+            ', ',
+          )}`,
         );
       } else {
         this.logger.debug(

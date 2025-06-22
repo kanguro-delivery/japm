@@ -2,7 +2,6 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  BadRequestException,
 } from '@nestjs/common';
 import { CreatePromptAssetDto } from './dto/create-prompt-asset.dto';
 import { UpdatePromptAssetDto } from './dto/update-prompt-asset.dto';
@@ -45,10 +44,14 @@ export class PromptAssetService {
     private activityLogService: ActivityLogService,
   ) { }
 
-  async create(createDto: CreatePromptAssetDto, promptId: string, projectId: string) {
+  async create(
+    createDto: CreatePromptAssetDto,
+    promptId: string,
+    projectId: string,
+  ) {
     const prompt = await this.prisma.prompt.findUnique({
       where: { id: promptId },
-      include: { owner: true }
+      include: { owner: true },
     });
 
     if (!prompt) {
@@ -67,10 +70,10 @@ export class PromptAssetService {
           include: {
             prompt: {
               include: {
-                owner: true
-              }
-            }
-          }
+                owner: true,
+              },
+            },
+          },
         });
 
         // Crear la versión inicial del asset
@@ -81,17 +84,20 @@ export class PromptAssetService {
             versionTag: '1.0.0',
             changeMessage: createDto.initialChangeMessage || 'Initial version',
             status: 'active',
-          }
+          },
         });
 
         // Crear las traducciones iniciales si existen
-        if (createDto.initialTranslations && createDto.initialTranslations.length > 0) {
+        if (
+          createDto.initialTranslations &&
+          createDto.initialTranslations.length > 0
+        ) {
           await tx.assetTranslation.createMany({
-            data: createDto.initialTranslations.map(t => ({
+            data: createDto.initialTranslations.map((t) => ({
               versionId: newVersion.id,
               languageCode: t.languageCode,
-              value: t.value
-            }))
+              value: t.value,
+            })),
           });
         }
 
@@ -118,26 +124,50 @@ export class PromptAssetService {
     }
   }
 
-  async update(id: string, updateDto: UpdatePromptAssetDto, projectId: string) {
+  async update(
+    key: string,
+    promptId: string,
+    updateDto: UpdatePromptAssetDto,
+    projectId: string,
+    userId: string,
+  ) {
+    // Busca el asset por su clave única compuesta para asegurar que existe.
+    const asset = await this.prisma.promptAsset.findUnique({
+      where: {
+        prompt_asset_key_unique: {
+          promptId,
+          projectId,
+          key,
+        },
+      },
+    });
+
+    if (!asset) {
+      throw new NotFoundException(
+        `PromptAsset with key "${key}" not found in prompt "${promptId}" (project "${projectId}")`,
+      );
+    }
+
+    // Una vez encontrado, actualiza usando su ID único.
     const updatedAsset = await this.prisma.promptAsset.update({
-      where: { id },
+      where: { id: asset.id },
       data: {
         enabled: updateDto.enabled,
       },
       include: {
         prompt: {
           include: {
-            owner: true
-          }
-        }
-      }
+            owner: true,
+          },
+        },
+      },
     });
 
     await this.activityLogService.logActivity({
       action: ActivityAction.UPDATE,
       entityType: ActivityEntityType.PROMPT_ASSET,
       entityId: updatedAsset.id,
-      userId: updatedAsset.prompt.owner.id,
+      userId: userId,
       projectId,
       details: `Updated asset ${updatedAsset.key}`,
     });

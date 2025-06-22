@@ -8,14 +8,11 @@ import {
   Delete,
   UsePipes,
   ValidationPipe,
-  NotFoundException,
   HttpCode,
   HttpStatus,
-  Put,
-  Query,
-  Req,
   UseGuards,
   SetMetadata,
+  Request,
 } from '@nestjs/common';
 import { PromptAssetService } from './prompt-asset.service';
 import { CreatePromptAssetDto } from './dto/create-prompt-asset.dto';
@@ -28,19 +25,21 @@ import {
   ApiBody,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { PromptAsset, PromptAssetVersion } from '@prisma/client';
 import { ProjectGuard } from '../common/guards/project.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { Request as ExpressRequest } from 'express';
 import { Logger } from '@nestjs/common';
 import { PROJECT_ID_PARAM_KEY } from '../common/guards/project.guard';
 import {
   ThrottleCreation,
   ThrottleRead,
 } from '../common/decorators/throttle.decorator';
+import { User } from '@prisma/client';
 
-interface RequestWithProject extends ExpressRequest {
-  projectId: string;
+interface RequestWithUser extends Request {
+  user: User & {
+    id: string;
+    tenantId: string;
+  };
 }
 
 @ApiTags('Prompt Assets (for a specific Prompt)')
@@ -181,11 +180,22 @@ export class PromptAssetController {
     @Param('projectId') projectId: string,
     @Param('assetKey') key: string,
     @Body() updateDto: UpdatePromptAssetDto,
+    @Request() req: RequestWithUser,
   ) {
     this.logger.debug(
-      `[update] Request for assetKey: ${key}, promptId: ${promptId}, projectId: ${projectId}. Body: ${JSON.stringify(updateDto, null, 2)}`,
+      `[update] Request for assetKey: ${key}, promptId: ${promptId}, projectId: ${projectId}. Body: ${JSON.stringify(
+        updateDto,
+        null,
+        2,
+      )}`,
     );
-    return this.service.update(key, updateDto, projectId);
+    return this.service.update(
+      key,
+      promptId,
+      updateDto,
+      projectId,
+      req.user.id,
+    );
   }
 
   @Delete(':assetKey')

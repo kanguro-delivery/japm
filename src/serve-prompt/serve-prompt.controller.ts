@@ -8,6 +8,7 @@ import {
   Post,
   Body,
   Logger,
+  Query,
 } from '@nestjs/common';
 import { ServePromptService } from './serve-prompt.service';
 import {
@@ -17,10 +18,13 @@ import {
   ApiParam,
   ApiBearerAuth,
   ApiBody,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { ProjectGuard } from '../common/guards/project.guard';
 import { PromptConsumerGuard } from '../common/guards/prompt-consumer.guard';
 import { ExecutePromptBodyDto } from './dto/execute-prompt-body.dto';
+import { ExecutePromptQueryDto } from './dto/execute-prompt-query.dto';
+import { PromptAsset } from '@prisma/client';
 
 @ApiTags('Serve Prompt')
 @ApiBearerAuth()
@@ -53,6 +57,7 @@ export class ServePromptController {
     description:
       'Specific version tag (e.g., "v1.2.0") or "latest" to use the most recent version',
   })
+  @ApiQuery({ type: ExecutePromptQueryDto })
   @ApiBody({
     type: ExecutePromptBodyDto,
     description: 'Input variables for the prompt',
@@ -60,7 +65,13 @@ export class ServePromptController {
   @ApiResponse({
     status: 200,
     description: 'Processed prompt text ready for execution and metadata.',
-    schema: { example: { processedPrompt: 'string', metadata: {} } },
+    schema: {
+      example: {
+        processedPrompt: 'string',
+        metadata: {},
+        assets: 'PromptAsset[]',
+      },
+    },
   })
   @ApiResponse({
     status: 404,
@@ -77,17 +88,24 @@ export class ServePromptController {
     @Param('promptName') promptName: string,
     @Param('versionTag') versionTag: string,
     @Body() body: ExecutePromptBodyDto,
-    @Request() req,
-  ): Promise<{ processedPrompt: string; metadata: any }> {
+    @Query() query: ExecutePromptQueryDto,
+  ): Promise<{
+    processedPrompt: string;
+    metadata: any;
+    assets?: PromptAsset[];
+  }> {
     this.logger.log(
       `[ServePromptController] Request received for executePromptWithoutLanguage.`,
     );
     this.logger.debug(
-      `[ServePromptController] Params: projectId=${projectId}, promptName=${promptName}, versionTag=${versionTag}`,
+      `[ServePromptController] Params: projectId=${projectId}, promptName=${promptName}, versionTag=${versionTag}, query=${JSON.stringify(
+        query,
+      )}`,
     );
     return this.service.executePromptVersion(
       { projectId, promptName, versionTag },
       body,
+      query,
     );
   }
 
@@ -120,6 +138,7 @@ export class ServePromptController {
     description: 'Language code for translation (e.g., "es")',
     type: String,
   })
+  @ApiQuery({ type: ExecutePromptQueryDto })
   @ApiBody({
     type: ExecutePromptBodyDto,
     description: 'Input variables for the prompt',
@@ -127,7 +146,13 @@ export class ServePromptController {
   @ApiResponse({
     status: 200,
     description: 'Processed prompt text ready for execution and metadata.',
-    schema: { example: { processedPrompt: 'string', metadata: {} } },
+    schema: {
+      example: {
+        processedPrompt: 'string',
+        metadata: {},
+        assets: 'PromptAsset[]',
+      },
+    },
   })
   @ApiResponse({
     status: 404,
@@ -145,11 +170,16 @@ export class ServePromptController {
     @Param('versionTag') versionTag: string,
     @Param('languageCode') languageCode: string,
     @Body() body: ExecutePromptBodyDto,
-    @Request() req,
-  ): Promise<{ processedPrompt: string; metadata: any }> {
+    @Query() query: ExecutePromptQueryDto,
+  ): Promise<{
+    processedPrompt: string;
+    metadata: any;
+    assets?: PromptAsset[];
+  }> {
     return this.service.executePromptVersion(
       { projectId, promptName, versionTag, languageCode },
       body,
+      query,
     );
   }
 }
