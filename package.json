@@ -59,6 +59,7 @@
     "langchain": "^0.3.24",
     "marked": "^12.0.2",
     "passport": "^0.7.0",
+    "passport-headerapikey": "^1.2.2",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
     "reflect-metadata": "^0.2.2",
