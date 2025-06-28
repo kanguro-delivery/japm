@@ -7,8 +7,9 @@
 .gitignore
 .gitattributes
 
-# Node.js
+# Node.js (but allow .prisma directory)
 node_modules
+!node_modules/.prisma
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*

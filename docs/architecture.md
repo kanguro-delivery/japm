@@ -49,6 +49,11 @@ The system follows an N-tier architecture, implemented using the **NestJS** fram
     *   **Services**: Contain business logic (creation, update, versioning, translation of prompts).
     *   **DTOs (Data Transfer Objects)**: Define the data structure for requests and responses (e.g., `CreatePromptVersionDto`).
     *   **Entities**: Models representing data stored in the database (e.g., `Prompt`, `PromptVersion`, `Translation`).
+*   **Deployment Management Module**:
+    *   **Controllers**: Expose API endpoints for deployment management (e.g., `/deployments`, `/deployments/:id/approve`).
+    *   **Services**: Contain business logic for deployment creation, approval, execution, and rollback.
+    *   **DTOs**: Define data structures for deployment operations.
+    *   **Entities**: Models for deployments and deployment items with governance controls.
 *   **Authentication/Authorization Module (Future Consideration)**:
     *   Responsible for verifying user identity and controlling access to resources.
     *   Could use JWT, OAuth2, or similar. (Not the initial focus but its need is foreseen).
@@ -56,7 +61,41 @@ The system follows an N-tier architecture, implemented using the **NestJS** fram
     *   Persists application data (prompts, versions, translations, users if applicable).
     *   A relational database (like PostgreSQL for its robustness and relationship handling) or NoSQL (like MongoDB if schema flexibility is a priority) could be used. The final choice will depend on a more detailed analysis of access and query patterns.
 
-### 3.2. Typical Data Flow (Example: Create New Prompt Version)
+### 3.2. Deployment Management Architecture
+
+The Deployment Management system provides corporate-level governance for prompt deployments:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    DEPLOYMENT WORKFLOW                      │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │   CREATE    │->│   APPROVE   │->│   DEPLOY    │         │
+│  │ Deployment  │  │ Deployment  │  │ Deployment  │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+│         │                │                │                │
+│         ▼                ▼                ▼                │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │   PENDING   │  │  APPROVED   │  │  DEPLOYED   │         │
+│  │   Status    │  │   Status    │  │   Status    │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+                    ┌─────────────────┐
+                    │    ROLLBACK     │
+                    │   (Optional)    │
+                    └─────────────────┘
+```
+
+**Key Features:**
+- **Governance Control**: 4-eyes principle for approvals
+- **Environment Management**: Deploy to specific environments
+- **Audit Trail**: Complete logging of all deployment activities
+- **Rollback Capability**: Quick reversion to previous states
+- **Risk Assessment**: Automatic risk level classification
+
+### 3.3. Typical Data Flow (Example: Create New Prompt Version)
 
 1.  The **Client** sends a `POST` request to `/prompts/{promptId}/versions` with the new version data (text, tag, change message, initial translations) in the body, conforming to `CreatePromptVersionDto`.
 2.  The **NestJS Application (API Gateway)** receives the request.
@@ -70,6 +109,15 @@ The system follows an N-tier architecture, implemented using the **NestJS** fram
     *   Saves the new entities to the **Database** (via an ORM like TypeORM or a database client).
 7.  The `PromptService` returns the created version data (or a confirmation) to the `PromptController`.
 8.  The `PromptController` returns an HTTP response (e.g., 201 Created) to the **Client**, possibly with the created entity in the body.
+
+### 3.4. Deployment Management Data Flow
+
+1. **Create Deployment**: Admin creates deployment with specific items (prompt versions, assets, AI models)
+2. **Validation**: System validates all items exist and are compatible
+3. **Approval**: Another admin approves the deployment (4-eyes principle)
+4. **Execution**: System deploys items to the target environment
+5. **Activation**: Prompts and assets become active in the environment
+6. **Audit**: All actions are logged for compliance and traceability
 
 ## 4. Key Technology Decisions
 

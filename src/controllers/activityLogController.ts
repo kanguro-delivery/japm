@@ -1,7 +1,6 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ActivityLogService } from '../services/activityLogService';
+import { ActivityLogService, ActivityEntityTypeType } from '../services/activityLogService';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { ActivityEntityType } from '@prisma/client';
 
 interface ActivityLogResponse {
   data: {
@@ -39,7 +38,7 @@ export class ActivityLogController {
   async getActivityLogs(
     @Query('projectId') projectId?: string,
     @Query('userId') userId?: string,
-    @Query('entityType') entityType?: ActivityEntityType,
+    @Query('entityType') entityType?: ActivityEntityTypeType,
     @Query('entityId') entityId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -63,7 +62,7 @@ export class ActivityLogController {
   @Get('entity/:entityType/:entityId')
   async getEntityActivity(
     @Query('projectId') projectId: string,
-    @Query('entityType') entityType: ActivityEntityType,
+    @Query('entityType') entityType: ActivityEntityTypeType,
     @Query('entityId') entityId: string,
   ): Promise<ActivityLogResponse> {
     const result = await this.activityLogService.getEntityActivity(

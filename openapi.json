@@ -6455,6 +6455,366 @@
           "Dashboard"
         ]
       }
+    },
+    "/api/api/projects/{projectId}/deployments": {
+      "post": {
+        "description": "Crea un nuevo deployment con los items especificados para un entorno",
+        "operationId": "DeploymentController_createDeployment",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "description": "ID del proyecto",
+            "schema": {
+              "example": "codegen-examples",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeploymentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Deployment creado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de entrada inválidos"
+          },
+          "404": {
+            "description": "Proyecto o entorno no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear un nuevo deployment",
+        "tags": [
+          "Deployments"
+        ]
+      },
+      "get": {
+        "description": "Obtiene la lista de deployments de un proyecto con filtros opcionales",
+        "operationId": "DeploymentController_findAllDeployments",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "description": "ID del proyecto",
+            "schema": {
+              "example": "codegen-examples",
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar por ID de entorno",
+            "schema": {
+              "example": "clx1234567890abcdef",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar por estado del deployment",
+            "schema": {
+              "enum": [
+                "PENDING",
+                "APPROVED",
+                "DEPLOYING",
+                "DEPLOYED",
+                "FAILED",
+                "ROLLED_BACK",
+                "CANCELLED"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de deployments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeploymentResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar deployments",
+        "tags": [
+          "Deployments"
+        ]
+      }
+    },
+    "/api/api/projects/{projectId}/deployments/{deploymentId}": {
+      "get": {
+        "description": "Obtiene los detalles completos de un deployment específico",
+        "operationId": "DeploymentController_findDeploymentById",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "description": "ID del proyecto",
+            "schema": {
+              "example": "codegen-examples",
+              "type": "string"
+            }
+          },
+          {
+            "name": "deploymentId",
+            "required": true,
+            "in": "path",
+            "description": "ID del deployment",
+            "schema": {
+              "example": "clx1234567890abcdef",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalles del deployment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Deployment no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener deployment por ID",
+        "tags": [
+          "Deployments"
+        ]
+      }
+    },
+    "/api/api/projects/{projectId}/deployments/{deploymentId}/approve": {
+      "put": {
+        "description": "Aprueba un deployment pendiente para su ejecución",
+        "operationId": "DeploymentController_approveDeployment",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "description": "ID del proyecto",
+            "schema": {
+              "example": "codegen-examples",
+              "type": "string"
+            }
+          },
+          {
+            "name": "deploymentId",
+            "required": true,
+            "in": "path",
+            "description": "ID del deployment",
+            "schema": {
+              "example": "clx1234567890abcdef",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deployment aprobado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Deployment no está en estado pendiente"
+          },
+          "403": {
+            "description": "No se puede aprobar el propio deployment"
+          },
+          "404": {
+            "description": "Deployment no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Aprobar deployment",
+        "tags": [
+          "Deployments"
+        ]
+      }
+    },
+    "/api/api/projects/{projectId}/deployments/{deploymentId}/deploy": {
+      "post": {
+        "description": "Ejecuta un deployment aprobado en el entorno especificado",
+        "operationId": "DeploymentController_deployDeployment",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "description": "ID del proyecto",
+            "schema": {
+              "example": "codegen-examples",
+              "type": "string"
+            }
+          },
+          {
+            "name": "deploymentId",
+            "required": true,
+            "in": "path",
+            "description": "ID del deployment",
+            "schema": {
+              "example": "clx1234567890abcdef",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deployment ejecutado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentResponseDto"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Deployment no está aprobado"
+          },
+          "404": {
+            "description": "Deployment no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ejecutar deployment",
+        "tags": [
+          "Deployments"
+        ]
+      }
+    },
+    "/api/api/projects/{projectId}/deployments/{deploymentId}/rollback": {
+      "post": {
+        "description": "Hace rollback de un deployment a una versión anterior",
+        "operationId": "DeploymentController_rollbackDeployment",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "description": "ID del proyecto",
+            "schema": {
+              "example": "codegen-examples",
+              "type": "string"
+            }
+          },
+          {
+            "name": "deploymentId",
+            "required": true,
+            "in": "path",
+            "description": "ID del deployment",
+            "schema": {
+              "example": "clx1234567890abcdef",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rollback ejecutado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentResponseDto"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Deployment no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hacer rollback de deployment",
+        "tags": [
+          "Deployments"
+        ]
+      }
     }
   },
   "info": {
@@ -8153,6 +8513,268 @@
           "userName",
           "projectId",
           "projectName"
+        ]
+      },
+      "CreateDeploymentItemDto": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "description": "Tipo de entidad a desplegar",
+            "enum": [
+              "PROMPT_VERSION",
+              "PROMPT_ASSET_VERSION",
+              "AI_MODEL"
+            ],
+            "example": "PROMPT_VERSION"
+          },
+          "entityId": {
+            "type": "string",
+            "description": "ID de la entidad a desplegar",
+            "example": "clx1234567890abcdef"
+          },
+          "versionTag": {
+            "type": "string",
+            "description": "Tag de la versión a desplegar",
+            "example": "1.2.0"
+          },
+          "changeMessage": {
+            "type": "string",
+            "description": "Mensaje de cambio para este item",
+            "example": "Mejora en la validación de entrada"
+          },
+          "riskLevel": {
+            "type": "string",
+            "default": "LOW",
+            "description": "Nivel de riesgo del cambio",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "CRITICAL"
+            ]
+          }
+        },
+        "required": [
+          "entityType",
+          "entityId",
+          "versionTag"
+        ]
+      },
+      "CreateDeploymentDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Nombre del deployment",
+            "example": "deploy-feature-multilang-2024-01-15"
+          },
+          "description": {
+            "type": "string",
+            "description": "Descripción del deployment",
+            "example": "Deployment de la nueva funcionalidad de soporte multiidioma"
+          },
+          "environmentId": {
+            "type": "string",
+            "description": "ID del entorno donde se desplegará",
+            "example": "clx1234567890abcdef"
+          },
+          "items": {
+            "description": "Items a desplegar",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateDeploymentItemDto"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "environmentId",
+          "items"
+        ]
+      },
+      "DeploymentItemResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID del item de deployment",
+            "example": "clx1234567890abcdef"
+          },
+          "entityType": {
+            "type": "string",
+            "description": "Tipo de entidad",
+            "enum": [
+              "PROMPT_VERSION",
+              "PROMPT_ASSET_VERSION",
+              "AI_MODEL"
+            ]
+          },
+          "entityId": {
+            "type": "string",
+            "description": "ID de la entidad",
+            "example": "clx1234567890abcdef"
+          },
+          "versionTag": {
+            "type": "string",
+            "description": "Tag de la versión",
+            "example": "1.2.0"
+          },
+          "status": {
+            "type": "string",
+            "description": "Estado del item",
+            "enum": [
+              "PENDING",
+              "DEPLOYING",
+              "DEPLOYED",
+              "FAILED",
+              "ROLLED_BACK"
+            ]
+          },
+          "errorMessage": {
+            "type": "string",
+            "description": "Mensaje de error si falló",
+            "example": "Error al desplegar la versión"
+          },
+          "changeMessage": {
+            "type": "string",
+            "description": "Mensaje de cambio",
+            "example": "Mejora en la validación de entrada"
+          },
+          "riskLevel": {
+            "type": "string",
+            "description": "Nivel de riesgo",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "CRITICAL"
+            ]
+          },
+          "deployedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Fecha de despliegue",
+            "example": "2024-01-15T10:30:00Z"
+          }
+        },
+        "required": [
+          "id",
+          "entityType",
+          "entityId",
+          "versionTag",
+          "status",
+          "riskLevel"
+        ]
+      },
+      "DeploymentResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID del deployment",
+            "example": "clx1234567890abcdef"
+          },
+          "name": {
+            "type": "string",
+            "description": "Nombre del deployment",
+            "example": "deploy-feature-multilang-2024-01-15"
+          },
+          "description": {
+            "type": "string",
+            "description": "Descripción del deployment",
+            "example": "Deployment de la nueva funcionalidad de soporte multiidioma"
+          },
+          "status": {
+            "type": "string",
+            "description": "Estado del deployment",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "DEPLOYING",
+              "DEPLOYED",
+              "FAILED",
+              "ROLLED_BACK",
+              "CANCELLED"
+            ]
+          },
+          "environmentId": {
+            "type": "string",
+            "description": "ID del entorno",
+            "example": "clx1234567890abcdef"
+          },
+          "environmentName": {
+            "type": "string",
+            "description": "Nombre del entorno",
+            "example": "production"
+          },
+          "requestedById": {
+            "type": "string",
+            "description": "ID del usuario que solicitó el deployment",
+            "example": "clx1234567890abcdef"
+          },
+          "requestedByName": {
+            "type": "string",
+            "description": "Nombre del usuario que solicitó el deployment",
+            "example": "Juan Pérez"
+          },
+          "approvedById": {
+            "type": "string",
+            "description": "ID del usuario que aprobó el deployment",
+            "example": "clx1234567890abcdef"
+          },
+          "approvedByName": {
+            "type": "string",
+            "description": "Nombre del usuario que aprobó el deployment",
+            "example": "María García"
+          },
+          "requestedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Fecha de solicitud",
+            "example": "2024-01-15T09:00:00Z"
+          },
+          "approvedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Fecha de aprobación",
+            "example": "2024-01-15T09:30:00Z"
+          },
+          "deployedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Fecha de despliegue",
+            "example": "2024-01-15T10:00:00Z"
+          },
+          "rolledBackAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Fecha de rollback",
+            "example": "2024-01-15T11:00:00Z"
+          },
+          "items": {
+            "description": "Items del deployment",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeploymentItemResponseDto"
+            }
+          },
+          "rollbackToDeploymentId": {
+            "type": "string",
+            "description": "ID del deployment de rollback",
+            "example": "clx1234567890abcdef"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "environmentId",
+          "environmentName",
+          "requestedById",
+          "requestedByName",
+          "requestedAt",
+          "items"
         ]
       }
     }

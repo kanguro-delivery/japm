@@ -14,7 +14,6 @@ generator client {
   provider        = "prisma-client-js"
   output          = "../node_modules/.prisma/client"
   previewFeatures = ["views", "extendedWhereUnique"]
-  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 // ENUMS & CUSTOM TYPES (alphabetical order)
@@ -58,6 +57,8 @@ enum ActivityAction {
   UNPUBLISH
   APPROVE
   REJECT
+  DEPLOY
+  ROLLBACK
 }
 
 enum ActivityEntityType {
@@ -74,6 +75,40 @@ enum ActivityEntityType {
   REGION
   CULTURAL_DATA
   RAG_DOCUMENT
+  DEPLOYMENT
+  DEPLOYMENT_ITEM
+}
+
+// --- DEPLOYMENT MANAGEMENT ENUMS ---
+enum DeploymentStatus {
+  PENDING
+  APPROVED
+  DEPLOYING
+  DEPLOYED
+  FAILED
+  ROLLED_BACK
+  CANCELLED
+}
+
+enum DeploymentItemStatus {
+  PENDING
+  DEPLOYING
+  DEPLOYED
+  FAILED
+  ROLLED_BACK
+}
+
+enum DeploymentEntityType {
+  PROMPT_VERSION
+  PROMPT_ASSET_VERSION
+  AI_MODEL
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }
 
 // MODELS (alphabetical order)
@@ -100,6 +135,10 @@ model User {
 
   authoredMarketplaceAssetRequests PromptAssetVersion[] @relation("AuthoredMarketplaceAssetRequests")
   approvedMarketplaceAssetRequests PromptAssetVersion[] @relation("ApprovedMarketplaceAssetRequests")
+
+  // Deployment relations
+  requestedDeployments Deployment[] @relation("DeploymentRequester")
+  approvedDeployments  Deployment[] @relation("DeploymentApprover")
 
   apiKeys ApiKey[]
 
@@ -201,6 +240,9 @@ model PromptVersion {
   marketplaceApproverId String?
   marketplaceApprover   User?   @relation("ApprovedMarketplacePromptRequests", fields: [marketplaceApproverId], references: [id], onDelete: SetNull)
 
+  // Deployment relations
+  deploymentItems DeploymentItem[]
+
   @@unique([promptId, versionTag])
   @@index([promptId])
   @@index([aiModelId])
@@ -266,6 +308,9 @@ model PromptAssetVersion {
 
   marketplaceApproverId String?
   marketplaceApprover   User?   @relation("ApprovedMarketplaceAssetRequests", fields: [marketplaceApproverId], references: [id], onDelete: SetNull)
+
+  // Deployment relations
+  deploymentItems DeploymentItem[]
 
   @@unique([assetId, versionTag])
   @@index([assetId])
@@ -345,6 +390,9 @@ model Project {
   promptExecutionLogs PromptExecutionLog[]  @relation("ProjectLogs")
   activityLogs        ActivityLog[]         // Nueva relación
 
+  // Deployment relations
+  deployments Deployment[]
+
   @@unique([tenantId, name])
   @@index([tenantId])
   @@index([ownerUserId])
@@ -369,6 +417,9 @@ model AIModel {
 
   promptVersions PromptVersion[]
 
+  // Deployment relations
+  deploymentItems DeploymentItem[]
+
   @@unique([projectId, name])
   @@index([projectId])
 }
@@ -382,6 +433,9 @@ model Environment {
   activePromptVersions PromptVersion[]      @relation("ActivePromptsInEnvironment")
   activeAssetVersions  PromptAssetVersion[] @relation("ActiveAssetsInEnvironment")
   promptExecutionLogs  PromptExecutionLog[]
+
+  // Deployment relations
+  deployments Deployment[]
 
   project   Project @relation("ProjectEnvironments", fields: [projectId], references: [id], onDelete: Cascade)
   projectId String  @map("project")
@@ -404,6 +458,10 @@ model PromptExecutionLog {
   user          User?        @relation(fields: [userId], references: [id])
   userId        String?
 
+  // Deployment relation
+  deployment   Deployment? @relation(fields: [deploymentId], references: [id])
+  deploymentId String?
+
   input  String
   output String
 
@@ -418,6 +476,7 @@ model PromptExecutionLog {
   @@index([environmentId])
   @@index([userId])
   @@index([timestamp])
+  @@index([deploymentId])
 }
 
 // --- Add New Model Below ---
@@ -498,4 +557,84 @@ model ApiKey {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// --- DEPLOYMENT MANAGEMENT MODELS ---
+
+model Deployment {
+  id          String   @id @default(cuid())
+  name        String   // "deploy-2024-01-15", "hotfix-security-001"
+  description String?
+  status      DeploymentStatus @default(PENDING)
+  
+  environment   Environment @relation(fields: [environmentId], references: [id])
+  environmentId String
+  
+  // Control de gobernanza
+  requestedBy   User   @relation("DeploymentRequester", fields: [requestedById], references: [id])
+  requestedById String
+  approvedBy    User?  @relation("DeploymentApprover", fields: [approvedById], references: [id])
+  approvedById  String?
+  approvedAt    DateTime?
+  
+  // Timestamps
+  requestedAt DateTime @default(now())
+  deployedAt  DateTime?
+  rolledBackAt DateTime?
+  
+  // Items del deployment
+  deploymentItems DeploymentItem[]
+  
+  // Rollback
+  rollbackToDeploymentId String?
+  rollbackToDeployment   Deployment? @relation("DeploymentRollback", fields: [rollbackToDeploymentId], references: [id])
+  rollbackFromDeployment Deployment[] @relation("DeploymentRollback")
+  
+  // Logs de ejecución relacionados
+  promptExecutionLogs PromptExecutionLog[]
+  
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String
+  
+  @@unique([projectId, environmentId, name])
+  @@index([environmentId])
+  @@index([status])
+  @@index([requestedAt])
+  @@index([requestedById])
+  @@index([approvedById])
+}
+
+model DeploymentItem {
+  id          String   @id @default(cuid())
+  deployment  Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  deploymentId String
+  
+  // Qué se está desplegando
+  entityType  DeploymentEntityType
+  entityId    String
+  versionTag  String
+  
+  // Estado del item
+  status      DeploymentItemStatus @default(PENDING)
+  deployedAt  DateTime?
+  errorMessage String?
+  
+  // Metadata
+  changeMessage String?
+  riskLevel    RiskLevel @default(LOW)
+  
+  // Referencias a las entidades específicas
+  promptVersion      PromptVersion?      @relation(fields: [promptVersionId], references: [id])
+  promptVersionId    String?
+  promptAssetVersion PromptAssetVersion? @relation(fields: [promptAssetVersionId], references: [id])
+  promptAssetVersionId String?
+  aiModel            AIModel?            @relation(fields: [aiModelId], references: [id])
+  aiModelId          String?
+  
+  @@index([deploymentId])
+  @@index([entityType, entityId])
+  @@index([status])
+  @@index([promptVersionId])
+  @@index([promptAssetVersionId])
+  @@index([aiModelId])
 }

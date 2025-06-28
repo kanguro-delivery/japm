@@ -40,7 +40,7 @@ export interface AuditLogEntry {
 
 @Injectable()
 export class AuditLoggerService {
-  constructor(private structuredLogger: StructuredLoggerService) {}
+  constructor(private structuredLogger: StructuredLoggerService) { }
 
   private determineRiskLevel(
     action: AuditAction,
@@ -106,10 +106,10 @@ export class AuditLoggerService {
       },
       error: error
         ? {
-            code: error.name,
-            message: error.message,
-            stack: error.stack,
-          }
+          code: error.name,
+          message: error.message,
+          stack: error.stack,
+        }
         : undefined,
     };
 
@@ -267,15 +267,140 @@ export class AuditLoggerService {
       {
         action,
         resourceType: 'Authentication',
-        resourceId: context.userId || 'unknown',
+        resourceId: context.userId || 'anonymous',
         result: error ? AuditResult.FAILURE : AuditResult.SUCCESS,
         details: {
+          method: details?.method,
+          provider: details?.provider,
+          deviceInfo: details?.deviceInfo,
           timestamp: new Date().toISOString(),
-          ...details,
         },
         riskLevel: 'MEDIUM',
       },
       error,
+    );
+  }
+
+  // --- DEPLOYMENT SPECIFIC LOGGING METHODS ---
+
+  /**
+   * Log deployment creation
+   */
+  logDeploymentCreated(data: {
+    deploymentId: string;
+    projectId: string;
+    environmentId: string;
+    requestedBy: string;
+    itemsCount: number;
+  }): void {
+    this.logAuditEvent(
+      {
+        userId: data.requestedBy,
+        projectId: data.projectId,
+        tenantId: '', // Will be filled by interceptor
+      },
+      {
+        action: AuditAction.CREATE,
+        resourceType: 'Deployment',
+        resourceId: data.deploymentId,
+        result: AuditResult.SUCCESS,
+        details: {
+          environmentId: data.environmentId,
+          itemsCount: data.itemsCount,
+          createdAt: new Date().toISOString(),
+        },
+        riskLevel: 'MEDIUM',
+      },
+    );
+  }
+
+  /**
+   * Log deployment approval
+   */
+  logDeploymentApproved(data: {
+    deploymentId: string;
+    projectId: string;
+    approvedBy: string;
+    requestedBy: string;
+  }): void {
+    this.logAuditEvent(
+      {
+        userId: data.approvedBy,
+        projectId: data.projectId,
+        tenantId: '', // Will be filled by interceptor
+      },
+      {
+        action: AuditAction.APPROVE,
+        resourceType: 'Deployment',
+        resourceId: data.deploymentId,
+        result: AuditResult.SUCCESS,
+        details: {
+          approvedBy: data.approvedBy,
+          requestedBy: data.requestedBy,
+          approvedAt: new Date().toISOString(),
+        },
+        riskLevel: 'MEDIUM',
+      },
+    );
+  }
+
+  /**
+   * Log deployment execution
+   */
+  logDeploymentDeployed(data: {
+    deploymentId: string;
+    projectId: string;
+    deployedBy: string;
+    itemsCount: number;
+  }): void {
+    this.logAuditEvent(
+      {
+        userId: data.deployedBy,
+        projectId: data.projectId,
+        tenantId: '', // Will be filled by interceptor
+      },
+      {
+        action: AuditAction.EXECUTE,
+        resourceType: 'Deployment',
+        resourceId: data.deploymentId,
+        result: AuditResult.SUCCESS,
+        details: {
+          deployedBy: data.deployedBy,
+          itemsCount: data.itemsCount,
+          deployedAt: new Date().toISOString(),
+        },
+        riskLevel: 'HIGH',
+      },
+    );
+  }
+
+  /**
+   * Log deployment rollback
+   */
+  logDeploymentRolledBack(data: {
+    deploymentId: string;
+    projectId: string;
+    rolledBackBy: string;
+    rollbackToDeploymentId: string;
+  }): void {
+    this.logAuditEvent(
+      {
+        userId: data.rolledBackBy,
+        projectId: data.projectId,
+        tenantId: '', // Will be filled by interceptor
+      },
+      {
+        action: AuditAction.UPDATE,
+        resourceType: 'Deployment',
+        resourceId: data.deploymentId,
+        result: AuditResult.SUCCESS,
+        details: {
+          rolledBackBy: data.rolledBackBy,
+          rollbackToDeploymentId: data.rollbackToDeploymentId,
+          rolledBackAt: new Date().toISOString(),
+        },
+        riskLevel: 'HIGH',
+      },
     );
   }
 }

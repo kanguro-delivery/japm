@@ -1,0 +1,161 @@
+### Deployment Management System - JAPM
+### Archivo de pruebas HTTP para el sistema de Deployment Management
+
+### Variables de entorno
+@baseUrl = http://localhost:3001/api
+@projectId = codegen-examples
+@token = {{login.response.body.access_token}}
+
+### 1. Login para obtener token
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### 2. Crear un nuevo deployment
+POST {{baseUrl}}/projects/{{projectId}}/deployments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "deploy-chatbot-v2-2024-01-15",
+  "description": "Deployment de la nueva versión del chatbot con mejoras en NLP",
+  "environmentId": "dev-env-123",
+  "items": [
+    {
+      "entityType": "PROMPT_VERSION",
+      "entityId": "user-code-request",
+      "versionTag": "2.0.0",
+      "changeMessage": "Mejoras en el procesamiento de lenguaje natural y validación de entrada",
+      "riskLevel": "MEDIUM"
+    },
+    {
+      "entityType": "PROMPT_ASSET_VERSION",
+      "entityId": "code-template-asset",
+      "versionTag": "1.1.0",
+      "changeMessage": "Nuevos templates de código más seguros",
+      "riskLevel": "LOW"
+    }
+  ]
+}
+
+### 3. Listar todos los deployments del proyecto
+GET {{baseUrl}}/projects/{{projectId}}/deployments
+Authorization: Bearer {{token}}
+
+### 4. Listar deployments por estado
+GET {{baseUrl}}/projects/{{projectId}}/deployments?status=PENDING
+Authorization: Bearer {{token}}
+
+### 5. Listar deployments por entorno
+GET {{baseUrl}}/projects/{{projectId}}/deployments?environmentId=dev-env-123
+Authorization: Bearer {{token}}
+
+### 6. Obtener deployment específico por ID
+# Reemplaza {deploymentId} con el ID real del deployment creado
+GET {{baseUrl}}/projects/{{projectId}}/deployments/{deploymentId}
+Authorization: Bearer {{token}}
+
+### 7. Aprobar deployment
+# Reemplaza {deploymentId} con el ID real del deployment
+PUT {{baseUrl}}/projects/{{projectId}}/deployments/{deploymentId}/approve
+Authorization: Bearer {{token}}
+
+### 8. Ejecutar deployment
+# Reemplaza {deploymentId} con el ID real del deployment aprobado
+POST {{baseUrl}}/projects/{{projectId}}/deployments/{deploymentId}/deploy
+Authorization: Bearer {{token}}
+
+### 9. Hacer rollback de deployment
+# Reemplaza {deploymentId} con el ID del deployment a revertir
+# Reemplaza {rollbackToDeploymentId} con el ID del deployment al que hacer rollback
+POST {{baseUrl}}/projects/{{projectId}}/deployments/{deploymentId}/rollback
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "rollbackToDeploymentId": "{rollbackToDeploymentId}"
+}
+
+### 10. Crear deployment de hotfix de seguridad
+POST {{baseUrl}}/projects/{{projectId}}/deployments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "hotfix-security-2024-01-15",
+  "description": "Parche de seguridad crítico para vulnerabilidad de inyección",
+  "environmentId": "prod-env-123",
+  "items": [
+    {
+      "entityType": "PROMPT_VERSION",
+      "entityId": "guard-codegen",
+      "versionTag": "1.1.1",
+      "changeMessage": "Corrección de vulnerabilidad de inyección en validación de código",
+      "riskLevel": "CRITICAL"
+    }
+  ]
+}
+
+### 11. Crear deployment con múltiples tipos de entidades
+POST {{baseUrl}}/projects/{{projectId}}/deployments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "deploy-full-stack-update-2024-01-15",
+  "description": "Deployment completo con prompts, assets y modelo de IA actualizados",
+  "environmentId": "staging-env-123",
+  "items": [
+    {
+      "entityType": "PROMPT_VERSION",
+      "entityId": "system-base",
+      "versionTag": "3.0.0",
+      "changeMessage": "Nueva arquitectura de instrucciones del sistema",
+      "riskLevel": "HIGH"
+    },
+    {
+      "entityType": "PROMPT_ASSET_VERSION",
+      "entityId": "response-templates",
+      "versionTag": "2.0.0",
+      "changeMessage": "Templates de respuesta completamente renovados",
+      "riskLevel": "MEDIUM"
+    },
+    {
+      "entityType": "AI_MODEL",
+      "entityId": "gpt-4o-model",
+      "versionTag": "2024-05-13",
+      "changeMessage": "Actualización al modelo GPT-4o más reciente",
+      "riskLevel": "LOW"
+    }
+  ]
+}
+
+### 12. Verificar estado de deployments en producción
+GET {{baseUrl}}/projects/{{projectId}}/deployments?environmentId=prod-env-123&status=DEPLOYED
+Authorization: Bearer {{token}}
+
+### 13. Ver historial de deployments fallidos
+GET {{baseUrl}}/projects/{{projectId}}/deployments?status=FAILED
+Authorization: Bearer {{token}}
+
+### 14. Ver deployments con rollback
+GET {{baseUrl}}/projects/{{projectId}}/deployments?status=ROLLED_BACK
+Authorization: Bearer {{token}}
+
+### Notas de uso:
+### 1. Reemplaza {deploymentId} con IDs reales obtenidos de las respuestas
+### 2. Asegúrate de que los environmentId existan en tu proyecto
+### 3. Los entityId deben corresponder a entidades reales en tu base de datos
+### 4. Para aprobar deployments, usa un usuario diferente al que lo creó
+### 5. Los deployments deben estar en estado APPROVED antes de ejecutarlos
+
+### Flujo típico de trabajo:
+### 1. Crear deployment (estado: PENDING)
+### 2. Aprobar deployment (estado: APPROVED) - requiere usuario diferente
+### 3. Ejecutar deployment (estado: DEPLOYED)
+### 4. Opcional: Hacer rollback si hay problemas 

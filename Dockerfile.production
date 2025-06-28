@@ -3,53 +3,52 @@
 # ====================================
 
 # ---- Base Node ----
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 WORKDIR /usr/src/app
-RUN apk add --no-cache dumb-init openssl
-# Asegúrate de que Prisma pueda encontrar OpenSSL
-ENV OPENSSL_ENGINES=/usr/lib/ssl/engines
+RUN apt-get update && apt-get install -y dumb-init openssl && rm -rf /var/lib/apt/lists/*
+# Ensure Prisma can find OpenSSL
+ENV OPENSSL_ENGINES=/usr/lib/x86_64-linux-gnu/engines-3
 ENV OPENSSL_CONF=/etc/ssl/openssl.cnf
 
-# ---- Dependencias ----
+# ---- Dependencies ----
 FROM base AS dependencies
-# Copia package.json y package-lock.json
+# Copy package.json and package-lock.json
 COPY package*.json ./
-# Instala todas las dependencias (incluyendo devDependencies para la compilación y generación de Prisma)
+# Install all dependencies
 RUN npm install
-# Copia el schema de Prisma
+# Copy Prisma schema and pre-generated client
 COPY prisma ./prisma/
-# Genera el cliente de Prisma (necesario antes de la compilación si se importa desde @prisma/client)
-RUN npx prisma generate
+COPY node_modules/.prisma ./node_modules/.prisma
 
 # ---- Builder ----
 FROM dependencies AS builder
-# Copia el resto del código fuente
+# Copy the rest of the source code
 COPY . .
-# Compila la aplicación
+# Compile the application
 RUN npm run build
 
 # ---- Release ----
 FROM base AS release
-# Copia package.json y package-lock.json (o solo package.json y node_modules si prefieres un solo COPY)
+# Copy package.json and package-lock.json
 COPY package*.json ./
-# Instala solo dependencias de producción
+# Install only production dependencies
 RUN npm install --omit=dev
-# Copia los artefactos de compilación desde la etapa builder
+# Copy compiled artifacts from builder stage
 COPY --from=builder /usr/src/app/dist ./dist
-# Copia el schema de Prisma y las migraciones para ejecutar migraciones en producción si es necesario
+# Copy Prisma schema and migrations
 COPY --from=builder /usr/src/app/prisma ./prisma
-# Copia el cliente de Prisma generado (si es necesario en runtime, aunque usualmente se empaqueta)
+# Copy generated Prisma client
 COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
 
-# Expone el puerto de la aplicación (ajusta si es diferente)
-EXPOSE 3000
+# Expose application port (adjust if different)
+EXPOSE 3001
 
-# Variables de entorno por defecto (pueden ser sobreescritas)
+# Default environment variables (can be overridden)
 ENV NODE_ENV=production
-# ENV DATABASE_URL="tu_url_de_base_de_datos_de_produccion" # ¡Asegúrate de configurar esto!
+# ENV DATABASE_URL="your_production_database_url" # Make sure to configure this!
 
-# Usuario no root para mayor seguridad
+# Use existing node user (already exists in node:20-slim)
 USER node
 
-# Comando para ejecutar la aplicación
+# Command to run the application
 CMD ["dumb-init", "node", "dist/src/main.js"]

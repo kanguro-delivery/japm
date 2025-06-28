@@ -26,6 +26,8 @@ export const ActivityEntityType = {
   REGION: 'REGION',
   CULTURAL_DATA: 'CULTURAL_DATA',
   RAG_DOCUMENT: 'RAG_DOCUMENT',
+  DEPLOYMENT: 'DEPLOYMENT',
+  DEPLOYMENT_ITEM: 'DEPLOYMENT_ITEM',
 } as const;
 
 export type ActivityActionType = typeof ActivityAction[keyof typeof ActivityAction];
