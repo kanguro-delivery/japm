@@ -74,7 +74,7 @@ import { ApiKeyOrJwtGuard } from './auth/guards/api-key-or-jwt.guard';
         return [
           {
             name: 'default',
-            ttl: parseInt(configService.get('THROTTLE_TTL') || '60') * 1000,
+            ttl: parseInt(configService.get('THROTTLE_TTL') || '20') * 1000,
             limit: parseInt(configService.get('THROTTLE_LIMIT') || '20000'),
           },
         ];
