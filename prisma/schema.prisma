@@ -14,7 +14,7 @@ generator client {
   provider        = "prisma-client-js"
   output          = "../node_modules/.prisma/client"
   previewFeatures = ["views", "extendedWhereUnique"]
-  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
+  binaryTargets   = ["native", "debian-openssl-1.0.x", "debian-openssl-1.1.x"]
 }
 
 // ENUMS & CUSTOM TYPES (alphabetical order)
@@ -142,7 +142,7 @@ model PromptVersion {
   id                   String               @id @default(cuid())
   prompt               Prompt               @relation("PromptVersion_prompt", fields: [promptId], references: [id], onDelete: Cascade)
   promptId             String               @map("prompt")
-  promptText           String               @default("") @db.Text
+  promptText           String               @db.Text
   languageCode         String               @default("en-US")
   versionTag           String               @default("1.0.0")
   changeMessage        String?
@@ -180,7 +180,7 @@ model PromptTranslation {
   version      PromptVersion @relation("PromptTranslation_version", fields: [versionId], references: [id], onDelete: Cascade)
   versionId    String        @map("version")
   languageCode String
-  promptText   String        @default("") @db.Text
+  promptText   String        @db.Text
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -211,7 +211,7 @@ model PromptAssetVersion {
   id                   String             @id @default(cuid())
   asset                PromptAsset        @relation("AssetVersions", fields: [assetId], references: [id], onDelete: Cascade)
   assetId              String             @map("asset")
-  value                String             @default("") @db.Text
+  value                String             @db.Text
   versionTag           String             @default("1.0.0")
   changeMessage        String?
   status               String             @default("draft")
@@ -245,7 +245,7 @@ model AssetTranslation {
   version      PromptAssetVersion @relation("AssetTranslation_version", fields: [versionId], references: [id], onDelete: Cascade)
   versionId    String             @map("version")
   languageCode String
-  value        String             @default("") @db.Text
+  value        String             @db.Text
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 

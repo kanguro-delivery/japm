@@ -70,7 +70,7 @@ CREATE TABLE `prompts` (
 CREATE TABLE `PromptVersion` (
     `id` VARCHAR(191) NOT NULL,
     `prompt` VARCHAR(191) NOT NULL,
-    `promptText` TEXT NOT NULL DEFAULT '',
+    `promptText` TEXT NOT NULL,
     `languageCode` VARCHAR(191) NOT NULL DEFAULT 'en-US',
     `versionTag` VARCHAR(191) NOT NULL DEFAULT '1.0.0',
     `changeMessage` VARCHAR(191) NULL,
@@ -99,7 +99,7 @@ CREATE TABLE `PromptTranslation` (
     `id` VARCHAR(191) NOT NULL,
     `version` VARCHAR(191) NOT NULL,
     `languageCode` VARCHAR(191) NOT NULL,
-    `promptText` TEXT NOT NULL DEFAULT '',
+    `promptText` TEXT NOT NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
@@ -128,7 +128,7 @@ CREATE TABLE `PromptAsset` (
 CREATE TABLE `PromptAssetVersion` (
     `id` VARCHAR(191) NOT NULL,
     `asset` VARCHAR(191) NOT NULL,
-    `value` TEXT NOT NULL DEFAULT '',
+    `value` TEXT NOT NULL,
     `versionTag` VARCHAR(191) NOT NULL DEFAULT '1.0.0',
     `changeMessage` VARCHAR(191) NULL,
     `status` VARCHAR(191) NOT NULL DEFAULT 'draft',
@@ -155,7 +155,7 @@ CREATE TABLE `AssetTranslation` (
     `id` VARCHAR(191) NOT NULL,
     `version` VARCHAR(191) NOT NULL,
     `languageCode` VARCHAR(191) NOT NULL,
-    `value` TEXT NOT NULL DEFAULT '',
+    `value` TEXT NOT NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
