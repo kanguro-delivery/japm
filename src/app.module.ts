@@ -30,6 +30,7 @@ import { SystemPromptModule } from './system-prompt/system-prompt.module';
 import { RawExecutionModule } from './raw-execution/raw-execution.module';
 import { TenantModule } from './tenant/tenant.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
+import { RuleModule } from './rule/rule.module';
 import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 
@@ -106,6 +107,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     RawExecutionModule,
     TenantModule,
     MarketplaceModule,
+    RuleModule,
   ],
   controllers: [AppController],
   providers: [
