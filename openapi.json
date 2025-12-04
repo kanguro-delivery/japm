@@ -6153,6 +6153,11 @@
             "description": "Unauthorized"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Create a new rule",
         "tags": [
           "Rules"
@@ -6206,6 +6211,11 @@
             "description": "Unauthorized"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Get all rules",
         "tags": [
           "Rules"
@@ -6265,6 +6275,11 @@
             }
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Get a rule by ID",
         "tags": [
           "Rules"
@@ -6348,6 +6363,11 @@
             }
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Update a rule",
         "tags": [
           "Rules"
@@ -6405,6 +6425,11 @@
             }
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Delete a rule",
         "tags": [
           "Rules"

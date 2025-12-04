@@ -16,9 +16,13 @@ import { CreateRuleDto } from './dto/create-rule.dto';
 import { UpdateRuleDto } from './dto/update-rule.dto';
 import {JwtAuthGuard} from "../auth/guards/jwt-auth.guard";
 import {RolesGuard} from "../auth/guards/roles.guard";
+import { Role } from '../auth/enums/role.enum';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @ApiTags('Rules')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN, Role.TENANT_ADMIN)
 @Controller('rules')
 export class RuleController {
   constructor(private readonly ruleService: RuleService) {}
