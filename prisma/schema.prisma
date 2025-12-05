@@ -317,7 +317,7 @@ model Project {
 }
 
 model Rule {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   title     String
   content   String   @db.Text
   language  String   @default("en-US")
