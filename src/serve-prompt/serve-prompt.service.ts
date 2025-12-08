@@ -302,7 +302,7 @@ export class ServePromptService {
       currentDepth?: number;
       maxDepth?: number;
     } = {},
-  ): Promise<{ processedPrompt: string; metadata: any }> {
+  ): Promise<{ processedPrompt: string; metadata: any; rules: any[] }> {
     const { projectId, promptName, versionTag, languageCode } = params;
     const { variables } = body;
     const { currentDepth = 0, maxDepth = 5 } = context;
@@ -469,9 +469,9 @@ export class ServePromptService {
       assetsUsed: resolvedAssetsMetadata,
       variablesProvided: Object.keys(variables || {}),
       resolvedPrompts: resolvedPromptsMetadata,
-      rules: rules
+      // rules: rules
     };
 
-    return { processedPrompt: finalTextAfterRefResolution, metadata };
+    return { processedPrompt: finalTextAfterRefResolution, metadata , rules: rules};
   }
 }
