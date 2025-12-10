@@ -21,7 +21,7 @@ export class CreateRuleDto {
   content: string;
 
   @ApiProperty({
-    description: 'Language code for the rule (ISO 639-1)',
+    description: 'Language code for the rule (BCP 47)',
     example: 'en-US',
     default: 'en-US',
     required: false

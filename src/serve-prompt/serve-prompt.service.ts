@@ -13,6 +13,7 @@ import {
   PromptTranslation,
   Environment,
   CulturalData,
+  Rule,
 } from '@prisma/client';
 // import { TemplateService } from '../template/template.service'; // Temporarily commented out
 import { ExecutePromptParamsDto } from './dto/execute-prompt-params.dto';
@@ -54,10 +55,10 @@ export class ServePromptService {
    * @returns An object containing the processed text and metadata about resolved assets.
    */
 
-  async fetchRules(): Promise<any[]> {
+  async fetchRules(): Promise<Rule[]> {
     try {
       const rules = await this.ruleService.findAll({});
-      this.logger.log(`fetchRules:: ${rules} `);
+      this.logger.log(`fetchRules:: ${JSON.stringify(rules)}`);
       return rules;
     } catch (error) {
       this.logger.error('Failed to fetch rules', error.stack);
@@ -302,7 +303,7 @@ export class ServePromptService {
       currentDepth?: number;
       maxDepth?: number;
     } = {},
-  ): Promise<{ processedPrompt: string; metadata: any; rules: any[] }> {
+  ): Promise<{ processedPrompt: string; metadata: any; rules: Rule[] }> {
     const { projectId, promptName, versionTag, languageCode } = params;
     const { variables } = body;
     const { currentDepth = 0, maxDepth = 5 } = context;
@@ -469,9 +470,8 @@ export class ServePromptService {
       assetsUsed: resolvedAssetsMetadata,
       variablesProvided: Object.keys(variables || {}),
       resolvedPrompts: resolvedPromptsMetadata,
-      // rules: rules
     };
 
-    return { processedPrompt: finalTextAfterRefResolution, metadata , rules: rules};
+    return { processedPrompt: finalTextAfterRefResolution, metadata, rules: rules};
   }
 }

@@ -16,7 +16,7 @@ export class UpdateRuleDto extends PartialType(CreateRuleDto) {
   content?: string;
 
   @ApiPropertyOptional({
-    description: 'Language code for the rule (ISO 639-1)',
+    description: 'Language code for the rule (BCP 47)',
     example: 'es-ES'
   })
   language?: string;
