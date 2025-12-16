@@ -5,13 +5,15 @@
 # ---- Base Node ----
 FROM node:20-alpine AS base
 WORKDIR /usr/src/app
-RUN apk add --no-cache dumb-init openssl
-# Asegúrate de que Prisma pueda encontrar OpenSSL
+RUN apk add --no-cache dumb-init openssl libc6-compat
+
+# IMPORTANT FIX for git Github workflows
+ENV PRISMA_CLIENT_ENGINE_TYPE=binary
+ENV PRISMA_CLI_QUERY_ENGINE_TYPE=binary
+ENV PRISMA_CLI_BINARY_TARGETS=linux-musl
+
 ENV OPENSSL_ENGINES=/usr/lib/ssl/engines
 ENV OPENSSL_CONF=/etc/ssl/openssl.cnf
-
-# 🔴 IMPORTANT FIX
-ENV PRISMA_CLIENT_ENGINE_TYPE=binary
 
 # ---- Dependencias ----
 FROM base AS dependencies
