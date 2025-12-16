@@ -20,7 +20,7 @@ FROM base AS dependencies
 # Copia package.json y package-lock.json
 COPY package*.json ./
 # Instala todas las dependencias (incluyendo devDependencies para la compilación y generación de Prisma)
-RUN npm install
+RUN npm install  --unsafe-perm
 # Copia el schema de Prisma
 COPY prisma ./prisma/
 # Genera el cliente de Prisma (necesario antes de la compilación si se importa desde @prisma/client)
