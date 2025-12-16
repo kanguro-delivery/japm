@@ -30,16 +30,19 @@ RUN npm run build
 
 # ---- Release ----
 FROM base AS release
-# Copia package.json y package-lock.json (o solo package.json y node_modules si prefieres un solo COPY)
-COPY package*.json ./
-# Instala solo dependencias de producción
-RUN npm install --omit=dev
-# Copia los artefactos de compilación desde la etapa builder
+WORKDIR /usr/src/app
+
+# Copy fully prepared node_modules (with Prisma client already generated)
+COPY --from=builder /usr/src/app/node_modules ./node_modules
+
+# Copy compiled app
 COPY --from=builder /usr/src/app/dist ./dist
-# Copia el schema de Prisma y las migraciones para ejecutar migraciones en producción si es necesario
+
+# Copy Prisma files (optional but recommended for migrations)
 COPY --from=builder /usr/src/app/prisma ./prisma
-# Copia el cliente de Prisma generado (si es necesario en runtime, aunque usualmente se empaqueta)
-COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
+
+# Remove devDependencies AFTER copying
+RUN npm prune --omit=dev
 
 # Expone el puerto de la aplicación (ajusta si es diferente)
 EXPOSE 3000
