@@ -6098,6 +6098,343 @@
           "Marketplace"
         ]
       }
+    },
+    "/api/rules": {
+      "post": {
+        "description": "Creates a new rule with the provided details.",
+        "operationId": "RuleController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRuleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The rule has been successfully created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "title": "Password Policy",
+                    "content": "Passwords must be at least 8 characters long",
+                    "language": "en-US",
+                    "version": "1.0.0",
+                    "createdAt": "2023-01-01T00:00:00.000Z",
+                    "updatedAt": "2023-01-01T00:00:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 400,
+                    "message": [
+                      "title should not be empty"
+                    ],
+                    "error": "Bad Request"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a new rule",
+        "tags": [
+          "Rules"
+        ]
+      },
+      "get": {
+        "description": "Retrieves a list of all rules with optional filtering.",
+        "operationId": "RuleController_findAll",
+        "parameters": [
+          {
+            "name": "language",
+            "required": false,
+            "in": "query",
+            "description": "Filter rules by language code (e.g., en-US, es-ES)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "required": false,
+            "in": "query",
+            "description": "Filter rules by version (e.g., 1.0.0)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of rules returned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": [
+                    {
+                      "id": "550e8400-e29b-41d4-a716-446655440000",
+                      "title": "Password Policy",
+                      "content": "Passwords must be at least 8 characters long",
+                      "language": "en-US",
+                      "version": "1.0.0",
+                      "createdAt": "2023-01-01T00:00:00.000Z",
+                      "updatedAt": "2023-01-01T00:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all rules",
+        "tags": [
+          "Rules"
+        ]
+      }
+    },
+    "/api/rules/{id}": {
+      "get": {
+        "description": "Retrieves a single rule by its unique identifier.",
+        "operationId": "RuleController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID of the rule to retrieve",
+            "schema": {
+              "example": "550e8400-e29b-41d4-a716-446655440000",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The rule was found and returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "title": "Password Policy",
+                    "content": "Passwords must be at least 8 characters long",
+                    "language": "en-US",
+                    "version": "1.0.0",
+                    "createdAt": "2023-01-01T00:00:00.000Z",
+                    "updatedAt": "2023-01-01T00:00:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Rule not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Rule with ID 550e8400-e29b-41d4-a716-446655440000 not found",
+                    "error": "Not Found"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a rule by ID",
+        "tags": [
+          "Rules"
+        ]
+      },
+      "patch": {
+        "description": "Updates an existing rule with the provided data.",
+        "operationId": "RuleController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID of the rule to update",
+            "schema": {
+              "example": "550e8400-e29b-41d4-a716-446655440000",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRuleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The rule was updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "title": "Updated Password Policy",
+                    "content": "Passwords must be at least 12 characters long",
+                    "language": "en-US",
+                    "version": "1.1.0",
+                    "createdAt": "2023-01-01T00:00:00.000Z",
+                    "updatedAt": "2023-01-02T00:00:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 400,
+                    "message": [
+                      "title should be a string"
+                    ],
+                    "error": "Bad Request"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Rule not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Rule with ID 550e8400-e29b-41d4-a716-446655440000 not found",
+                    "error": "Not Found"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a rule",
+        "tags": [
+          "Rules"
+        ]
+      },
+      "delete": {
+        "description": "Deletes a rule by its unique identifier.",
+        "operationId": "RuleController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID of the rule to delete",
+            "schema": {
+              "example": "550e8400-e29b-41d4-a716-446655440000",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The rule was deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "title": "Password Policy",
+                    "content": "Passwords must be at least 8 characters long",
+                    "language": "en-US",
+                    "version": "1.0.0",
+                    "createdAt": "2023-01-01T00:00:00.000Z",
+                    "updatedAt": "2023-01-01T00:00:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Rule not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Rule with ID 550e8400-e29b-41d4-a716-446655440000 not found",
+                    "error": "Not Found"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a rule",
+        "tags": [
+          "Rules"
+        ]
+      }
     }
   },
   "info": {
@@ -7744,6 +8081,62 @@
         "required": [
           "modelId"
         ]
+      },
+      "CreateRuleDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "The title of the rule",
+            "example": "Password Policy"
+          },
+          "content": {
+            "type": "string",
+            "description": "The content/description of the rule",
+            "example": "Passwords must be at least 8 characters long"
+          },
+          "language": {
+            "type": "string",
+            "default": "en-US",
+            "description": "Language code for the rule (ISO 639-1)",
+            "example": "en-US"
+          },
+          "version": {
+            "type": "string",
+            "default": "1.0.0",
+            "description": "Version of the rule",
+            "example": "1.0.0"
+          }
+        },
+        "required": [
+          "title",
+          "content"
+        ]
+      },
+      "UpdateRuleDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "The title of the rule",
+            "example": "Updated Password Policy"
+          },
+          "content": {
+            "type": "string",
+            "description": "The content/description of the rule",
+            "example": "Updated: Passwords must be at least 12 characters long"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language code for the rule (ISO 639-1)",
+            "example": "es-ES"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version of the rule",
+            "example": "1.1.0"
+          }
+        }
       }
     }
   }

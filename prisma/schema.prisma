@@ -315,6 +315,19 @@ model Project {
   @@index([ownerUserId])
 }
 
+model Rule {
+  id        String   @id @default(uuid())
+  title     String
+  content   String   @db.Text
+  language  String   @default("en-US")
+  version   String   @default("1.0.0")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([language])
+  @@index([version])
+}
+
 model AIModel {
   id            String   @id @default(cuid())
   name          String // Removed global @unique

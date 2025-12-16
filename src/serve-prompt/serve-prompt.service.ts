@@ -13,11 +13,14 @@ import {
   PromptTranslation,
   Environment,
   CulturalData,
+  Rule,
 } from '@prisma/client';
 // import { TemplateService } from '../template/template.service'; // Temporarily commented out
 import { ExecutePromptParamsDto } from './dto/execute-prompt-params.dto';
 import { ExecutePromptQueryDto } from './dto/execute-prompt-query.dto';
 import { ExecutePromptBodyDto } from './dto/execute-prompt-body.dto';
+import { RuleService } from '../rule/rule.service';
+
 
 // Definición de la función slugify (copiada de prompt.service.ts)
 function slugify(text: string): string {
@@ -37,6 +40,7 @@ export class ServePromptService {
 
   constructor(
     private prisma: PrismaService,
+    private ruleService: RuleService,
     // private templateService: TemplateService // Temporarily commented out
   ) { }
 
@@ -50,6 +54,18 @@ export class ServePromptService {
    * @param promptContext Optional prompt context for better logging
    * @returns An object containing the processed text and metadata about resolved assets.
    */
+
+  async fetchRules(): Promise<Rule[]> {
+    try {
+      const rules = await this.ruleService.findAll({});
+      this.logger.log(`fetchRules:: ${JSON.stringify(rules)}`);
+      return rules;
+    } catch (error) {
+      this.logger.error('Failed to fetch rules', error.stack);
+      return [];
+    }
+  }
+
   async resolveAssets(
     text: string,
     promptIdInput: string,
@@ -287,7 +303,7 @@ export class ServePromptService {
       currentDepth?: number;
       maxDepth?: number;
     } = {},
-  ): Promise<{ processedPrompt: string; metadata: any }> {
+  ): Promise<{ processedPrompt: string; metadata: any; rules: Rule[] }> {
     const { projectId, promptName, versionTag, languageCode } = params;
     const { variables } = body;
     const { currentDepth = 0, maxDepth = 5 } = context;
@@ -440,6 +456,9 @@ export class ServePromptService {
       },
     );
 
+
+    const rules = await this.fetchRules();
+
     const metadata = {
       projectId: currentProjectId,
       promptName: resolvedPrompt.name,
@@ -453,6 +472,6 @@ export class ServePromptService {
       resolvedPrompts: resolvedPromptsMetadata,
     };
 
-    return { processedPrompt: finalTextAfterRefResolution, metadata };
+    return { processedPrompt: finalTextAfterRefResolution, metadata, rules: rules};
   }
 }
