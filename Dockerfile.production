@@ -10,6 +10,9 @@ RUN apk add --no-cache dumb-init openssl
 ENV OPENSSL_ENGINES=/usr/lib/ssl/engines
 ENV OPENSSL_CONF=/etc/ssl/openssl.cnf
 
+# 🔴 IMPORTANT FIX
+ENV PRISMA_CLIENT_ENGINE_TYPE=binary
+
 # ---- Dependencias ----
 FROM base AS dependencies
 # Copia package.json y package-lock.json
