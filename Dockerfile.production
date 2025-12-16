@@ -1,42 +1,55 @@
+# ====================================
+# Multi-stage Dockerfile for JAPM API
+# ====================================
+
 # ---- Base Node ----
 FROM node:20-alpine AS base
 WORKDIR /usr/src/app
-RUN apk add --no-cache dumb-init openssl libc6-compat
+RUN apk add --no-cache dumb-init openssl
+# Asegúrate de que Prisma pueda encontrar OpenSSL
 ENV OPENSSL_ENGINES=/usr/lib/ssl/engines
 ENV OPENSSL_CONF=/etc/ssl/openssl.cnf
 
 # ---- Dependencias ----
 FROM base AS dependencies
-WORKDIR /usr/src/app
-
+# Copia package.json y package-lock.json
 COPY package*.json ./
-
-# Install ALL dependencies (including dev)
-RUN npm install --unsafe-perm
-
-# Then copy Prisma schema and generate
+# Instala todas las dependencias (incluyendo devDependencies para la compilación y generación de Prisma)
+RUN npm install
+# Copia el schema de Prisma
 COPY prisma ./prisma/
+# Genera el cliente de Prisma (necesario antes de la compilación si se importa desde @prisma/client)
 RUN npx prisma generate
 
 # ---- Builder ----
 FROM dependencies AS builder
-WORKDIR /usr/src/app
-
+# Copia el resto del código fuente
 COPY . .
+# Compila la aplicación
 RUN npm run build
 
 # ---- Release ----
 FROM base AS release
-WORKDIR /usr/src/app
-
-COPY --from=builder /usr/src/app/node_modules ./node_modules
+# Copia package.json y package-lock.json (o solo package.json y node_modules si prefieres un solo COPY)
+COPY package*.json ./
+# Instala solo dependencias de producción
+RUN npm install --omit=dev
+# Copia los artefactos de compilación desde la etapa builder
 COPY --from=builder /usr/src/app/dist ./dist
+# Copia el schema de Prisma y las migraciones para ejecutar migraciones en producción si es necesario
 COPY --from=builder /usr/src/app/prisma ./prisma
+# Copia el cliente de Prisma generado (si es necesario en runtime, aunque usualmente se empaqueta)
+COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
 
-RUN npm prune --omit=dev
-
+# Expone el puerto de la aplicación (ajusta si es diferente)
 EXPOSE 3000
-ENV NODE_ENV=production
 
+# Variables de entorno por defecto (pueden ser sobreescritas)
+ENV NODE_ENV=production
+# ENV DATABASE_URL="tu_url_de_base_de_datos_de_produccion" # ¡Asegúrate de configurar esto!
+
+# Usuario no root para mayor seguridad
 USER node
+
+# Comando para ejecutar la aplicación
 CMD ["dumb-init", "node", "dist/src/main.js"]
