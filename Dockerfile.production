@@ -10,11 +10,13 @@ FROM base AS dependencies
 WORKDIR /usr/src/app
 
 COPY package*.json ./
-COPY prisma ./prisma/
 
-# Install dependencies and generate Prisma client in one step
-RUN npm install --unsafe-perm && \
-    npx prisma generate
+# Install ALL dependencies (including dev)
+RUN npm install --unsafe-perm
+
+# Then copy Prisma schema and generate
+COPY prisma ./prisma/
+RUN npx prisma generate
 
 # ---- Builder ----
 FROM dependencies AS builder
@@ -27,12 +29,10 @@ RUN npm run build
 FROM base AS release
 WORKDIR /usr/src/app
 
-# Copy node_modules with generated Prisma client
 COPY --from=builder /usr/src/app/node_modules ./node_modules
 COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/prisma ./prisma
 
-# Prune dev dependencies
 RUN npm prune --omit=dev
 
 EXPOSE 3000

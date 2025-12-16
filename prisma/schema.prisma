@@ -11,10 +11,9 @@ datasource db {
 }
 
 generator client {
-  provider        = "prisma-client-js"
-  output          = "../node_modules/.prisma/client"
-  previewFeatures = ["views", "extendedWhereUnique"]
-  binaryTargets   = ["native", "linux-musl", "linux-musl-openssl-3.0.x"]
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+  engineType    = "binary"
 }
 
 // ENUMS & CUSTOM TYPES (alphabetical order)
