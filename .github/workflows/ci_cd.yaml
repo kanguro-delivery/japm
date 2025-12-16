@@ -38,7 +38,7 @@ jobs:
       cancel-in-progress: true
     env:
       ENVIRONMENT: ${{ needs.settings.outputs.env_name }}
-      ECR_REPOSITORY: ${{ needs.settings.outputs.env_name }}-japm_api
+      ECR_REPOSITORY: ${{ needs.settings.outputs.env_name }}-japm-api
 
     steps:
       - name: Transform some env vars to uppercase
