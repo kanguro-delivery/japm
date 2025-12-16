@@ -401,6 +401,17 @@ model PromptExecutionLog {
 
 // --- Add New Model Below ---
 
+model AnalysisPlan {
+  id                   String   @id @default(uuid())
+  name                 String
+  structuredDataPrompt String   @db.Text
+  structuredDataSchema Json     @db.Json
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
+  @@index([name])
+}
+
 model SystemPrompt {
   id          String   @id @default(cuid())
   name        String   @unique

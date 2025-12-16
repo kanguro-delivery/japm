@@ -3987,6 +3987,343 @@
         ]
       }
     },
+    "/api/rules": {
+      "post": {
+        "description": "Creates a new rule with the provided details.",
+        "operationId": "RuleController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRuleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The rule has been successfully created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "title": "Password Policy",
+                    "content": "Passwords must be at least 8 characters long",
+                    "language": "en-US",
+                    "version": "1.0.0",
+                    "createdAt": "2023-01-01T00:00:00.000Z",
+                    "updatedAt": "2023-01-01T00:00:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 400,
+                    "message": [
+                      "title should not be empty"
+                    ],
+                    "error": "Bad Request"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a new rule",
+        "tags": [
+          "Rules"
+        ]
+      },
+      "get": {
+        "description": "Retrieves a list of all rules with optional filtering.",
+        "operationId": "RuleController_findAll",
+        "parameters": [
+          {
+            "name": "language",
+            "required": false,
+            "in": "query",
+            "description": "Filter rules by language code (e.g., en-US, es-ES)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "required": false,
+            "in": "query",
+            "description": "Filter rules by version (e.g., 1.0.0)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of rules returned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": [
+                    {
+                      "id": "550e8400-e29b-41d4-a716-446655440000",
+                      "title": "Password Policy",
+                      "content": "Passwords must be at least 8 characters long",
+                      "language": "en-US",
+                      "version": "1.0.0",
+                      "createdAt": "2023-01-01T00:00:00.000Z",
+                      "updatedAt": "2023-01-01T00:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all rules",
+        "tags": [
+          "Rules"
+        ]
+      }
+    },
+    "/api/rules/{id}": {
+      "get": {
+        "description": "Retrieves a single rule by its unique identifier.",
+        "operationId": "RuleController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID of the rule to retrieve",
+            "schema": {
+              "example": "550e8400-e29b-41d4-a716-446655440000",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The rule was found and returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "title": "Password Policy",
+                    "content": "Passwords must be at least 8 characters long",
+                    "language": "en-US",
+                    "version": "1.0.0",
+                    "createdAt": "2023-01-01T00:00:00.000Z",
+                    "updatedAt": "2023-01-01T00:00:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Rule not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Rule with ID 550e8400-e29b-41d4-a716-446655440000 not found",
+                    "error": "Not Found"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a rule by ID",
+        "tags": [
+          "Rules"
+        ]
+      },
+      "patch": {
+        "description": "Updates an existing rule with the provided data.",
+        "operationId": "RuleController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID of the rule to update",
+            "schema": {
+              "example": "550e8400-e29b-41d4-a716-446655440000",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRuleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The rule was updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "title": "Updated Password Policy",
+                    "content": "Passwords must be at least 12 characters long",
+                    "language": "en-US",
+                    "version": "1.1.0",
+                    "createdAt": "2023-01-01T00:00:00.000Z",
+                    "updatedAt": "2023-01-02T00:00:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 400,
+                    "message": [
+                      "title should be a string"
+                    ],
+                    "error": "Bad Request"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Rule not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Rule with ID 550e8400-e29b-41d4-a716-446655440000 not found",
+                    "error": "Not Found"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a rule",
+        "tags": [
+          "Rules"
+        ]
+      },
+      "delete": {
+        "description": "Deletes a rule by its unique identifier.",
+        "operationId": "RuleController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID of the rule to delete",
+            "schema": {
+              "example": "550e8400-e29b-41d4-a716-446655440000",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The rule was deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "title": "Password Policy",
+                    "content": "Passwords must be at least 8 characters long",
+                    "language": "en-US",
+                    "version": "1.0.0",
+                    "createdAt": "2023-01-01T00:00:00.000Z",
+                    "updatedAt": "2023-01-01T00:00:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Rule not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Rule with ID 550e8400-e29b-41d4-a716-446655440000 not found",
+                    "error": "Not Found"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a rule",
+        "tags": [
+          "Rules"
+        ]
+      }
+    },
     "/api/projects/{projectId}/aimodels": {
       "post": {
         "operationId": "AiModelController_create",
@@ -6099,33 +6436,32 @@
         ]
       }
     },
-    "/api/rules": {
+    "/api/analysis-plans": {
       "post": {
-        "description": "Creates a new rule with the provided details.",
-        "operationId": "RuleController_create",
+        "description": "Creates a new analysis plan with the provided details.",
+        "operationId": "AnalysisPlanController_create",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateRuleDto"
+                "$ref": "#/components/schemas/CreateAnalysisPlanDto"
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "The rule has been successfully created.",
+            "description": "The analysis plan has been successfully created.",
             "content": {
               "application/json": {
                 "schema": {
                   "example": {
                     "id": "550e8400-e29b-41d4-a716-446655440000",
-                    "title": "Password Policy",
-                    "content": "Passwords must be at least 8 characters long",
-                    "language": "en-US",
-                    "version": "1.0.0",
+                    "name": "Sentiment Analysis",
+                    "structuredDataPrompt": "Analyze the sentiment...",
+                    "structuredDataSchema": {},
                     "createdAt": "2023-01-01T00:00:00.000Z",
                     "updatedAt": "2023-01-01T00:00:00.000Z"
                   }
@@ -6141,16 +6477,13 @@
                   "example": {
                     "statusCode": 400,
                     "message": [
-                      "title should not be empty"
+                      "name should not be empty"
                     ],
                     "error": "Bad Request"
                   }
                 }
               }
             }
-          },
-          "401": {
-            "description": "Unauthorized"
           }
         },
         "security": [
@@ -6158,47 +6491,27 @@
             "bearer": []
           }
         ],
-        "summary": "Create a new rule",
+        "summary": "Create a new analysis plan",
         "tags": [
-          "Rules"
+          "Analysis Plans"
         ]
       },
       "get": {
-        "description": "Retrieves a list of all rules with optional filtering.",
-        "operationId": "RuleController_findAll",
-        "parameters": [
-          {
-            "name": "language",
-            "required": false,
-            "in": "query",
-            "description": "Filter rules by language code (e.g., en-US, es-ES)",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "version",
-            "required": false,
-            "in": "query",
-            "description": "Filter rules by version (e.g., 1.0.0)",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "description": "Retrieves a list of all analysis plans.",
+        "operationId": "AnalysisPlanController_findAll",
+        "parameters": [],
         "responses": {
           "200": {
-            "description": "List of rules returned successfully",
+            "description": "List of analysis plans returned successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "example": [
                     {
                       "id": "550e8400-e29b-41d4-a716-446655440000",
-                      "title": "Password Policy",
-                      "content": "Passwords must be at least 8 characters long",
-                      "language": "en-US",
-                      "version": "1.0.0",
+                      "name": "Sentiment Analysis",
+                      "structuredDataPrompt": "Analyze the sentiment...",
+                      "structuredDataSchema": {},
                       "createdAt": "2023-01-01T00:00:00.000Z",
                       "updatedAt": "2023-01-01T00:00:00.000Z"
                     }
@@ -6216,22 +6529,22 @@
             "bearer": []
           }
         ],
-        "summary": "Get all rules",
+        "summary": "Get all analysis plans",
         "tags": [
-          "Rules"
+          "Analysis Plans"
         ]
       }
     },
-    "/api/rules/{id}": {
+    "/api/analysis-plans/{id}": {
       "get": {
-        "description": "Retrieves a single rule by its unique identifier.",
-        "operationId": "RuleController_findOne",
+        "description": "Retrieves a single analysis plan by its unique identifier.",
+        "operationId": "AnalysisPlanController_findOne",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
-            "description": "UUID of the rule to retrieve",
+            "description": "UUID of the analysis plan to retrieve",
             "schema": {
               "example": "550e8400-e29b-41d4-a716-446655440000",
               "type": "string"
@@ -6240,16 +6553,15 @@
         ],
         "responses": {
           "200": {
-            "description": "The rule was found and returned",
+            "description": "The analysis plan was found and returned",
             "content": {
               "application/json": {
                 "schema": {
                   "example": {
                     "id": "550e8400-e29b-41d4-a716-446655440000",
-                    "title": "Password Policy",
-                    "content": "Passwords must be at least 8 characters long",
-                    "language": "en-US",
-                    "version": "1.0.0",
+                    "name": "Sentiment Analysis",
+                    "structuredDataPrompt": "Analyze the sentiment...",
+                    "structuredDataSchema": {},
                     "createdAt": "2023-01-01T00:00:00.000Z",
                     "updatedAt": "2023-01-01T00:00:00.000Z"
                   }
@@ -6261,13 +6573,13 @@
             "description": "Unauthorized"
           },
           "404": {
-            "description": "Rule not found",
+            "description": "Analysis plan not found",
             "content": {
               "application/json": {
                 "schema": {
                   "example": {
                     "statusCode": 404,
-                    "message": "Rule with ID 550e8400-e29b-41d4-a716-446655440000 not found",
+                    "message": "Analysis plan with ID 550e8400-e29b-41d4-a716-446655440000 not found",
                     "error": "Not Found"
                   }
                 }
@@ -6280,20 +6592,20 @@
             "bearer": []
           }
         ],
-        "summary": "Get a rule by ID",
+        "summary": "Get an analysis plan by ID",
         "tags": [
-          "Rules"
+          "Analysis Plans"
         ]
       },
       "patch": {
-        "description": "Updates an existing rule with the provided data.",
-        "operationId": "RuleController_update",
+        "description": "Updates an existing analysis plan with the provided data.",
+        "operationId": "AnalysisPlanController_update",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
-            "description": "UUID of the rule to update",
+            "description": "UUID of the analysis plan to update",
             "schema": {
               "example": "550e8400-e29b-41d4-a716-446655440000",
               "type": "string"
@@ -6305,23 +6617,22 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateRuleDto"
+                "$ref": "#/components/schemas/UpdateAnalysisPlanDto"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "The rule was updated successfully",
+            "description": "The analysis plan was updated successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "example": {
                     "id": "550e8400-e29b-41d4-a716-446655440000",
-                    "title": "Updated Password Policy",
-                    "content": "Passwords must be at least 12 characters long",
-                    "language": "en-US",
-                    "version": "1.1.0",
+                    "name": "Updated Sentiment Analysis",
+                    "structuredDataPrompt": "Updated analysis prompt...",
+                    "structuredDataSchema": {},
                     "createdAt": "2023-01-01T00:00:00.000Z",
                     "updatedAt": "2023-01-02T00:00:00.000Z"
                   }
@@ -6337,7 +6648,7 @@
                   "example": {
                     "statusCode": 400,
                     "message": [
-                      "title should be a string"
+                      "name should be a string"
                     ],
                     "error": "Bad Request"
                   }
@@ -6349,13 +6660,13 @@
             "description": "Unauthorized"
           },
           "404": {
-            "description": "Rule not found",
+            "description": "Analysis plan not found",
             "content": {
               "application/json": {
                 "schema": {
                   "example": {
                     "statusCode": 404,
-                    "message": "Rule with ID 550e8400-e29b-41d4-a716-446655440000 not found",
+                    "message": "Analysis plan with ID 550e8400-e29b-41d4-a716-446655440000 not found",
                     "error": "Not Found"
                   }
                 }
@@ -6368,20 +6679,20 @@
             "bearer": []
           }
         ],
-        "summary": "Update a rule",
+        "summary": "Update an analysis plan",
         "tags": [
-          "Rules"
+          "Analysis Plans"
         ]
       },
       "delete": {
-        "description": "Deletes a rule by its unique identifier.",
-        "operationId": "RuleController_remove",
+        "description": "Deletes an analysis plan by its unique identifier.",
+        "operationId": "AnalysisPlanController_remove",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
-            "description": "UUID of the rule to delete",
+            "description": "UUID of the analysis plan to delete",
             "schema": {
               "example": "550e8400-e29b-41d4-a716-446655440000",
               "type": "string"
@@ -6390,16 +6701,15 @@
         ],
         "responses": {
           "200": {
-            "description": "The rule was deleted successfully",
+            "description": "The analysis plan was deleted successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "example": {
                     "id": "550e8400-e29b-41d4-a716-446655440000",
-                    "title": "Password Policy",
-                    "content": "Passwords must be at least 8 characters long",
-                    "language": "en-US",
-                    "version": "1.0.0",
+                    "name": "Sentiment Analysis",
+                    "structuredDataPrompt": "Analyze the sentiment...",
+                    "structuredDataSchema": {},
                     "createdAt": "2023-01-01T00:00:00.000Z",
                     "updatedAt": "2023-01-01T00:00:00.000Z"
                   }
@@ -6411,13 +6721,13 @@
             "description": "Unauthorized"
           },
           "404": {
-            "description": "Rule not found",
+            "description": "Analysis plan not found",
             "content": {
               "application/json": {
                 "schema": {
                   "example": {
                     "statusCode": 404,
-                    "message": "Rule with ID 550e8400-e29b-41d4-a716-446655440000 not found",
+                    "message": "Analysis plan with ID 550e8400-e29b-41d4-a716-446655440000 not found",
                     "error": "Not Found"
                   }
                 }
@@ -6430,9 +6740,9 @@
             "bearer": []
           }
         ],
-        "summary": "Delete a rule",
+        "summary": "Delete an analysis plan",
         "tags": [
-          "Rules"
+          "Analysis Plans"
         ]
       }
     }
@@ -7767,6 +8077,62 @@
           "variables"
         ]
       },
+      "CreateRuleDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "The title of the rule",
+            "example": "Password Policy"
+          },
+          "content": {
+            "type": "string",
+            "description": "The content/description of the rule",
+            "example": "Passwords must be at least 8 characters long"
+          },
+          "language": {
+            "type": "string",
+            "default": "en-US",
+            "description": "Language code for the rule (BCP 47)",
+            "example": "en-US"
+          },
+          "version": {
+            "type": "string",
+            "default": "1.0.0",
+            "description": "Version of the rule",
+            "example": "1.0.0"
+          }
+        },
+        "required": [
+          "title",
+          "content"
+        ]
+      },
+      "UpdateRuleDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "The title of the rule",
+            "example": "Updated Password Policy"
+          },
+          "content": {
+            "type": "string",
+            "description": "The content/description of the rule",
+            "example": "Updated: Passwords must be at least 12 characters long"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language code for the rule (BCP 47)",
+            "example": "es-ES"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version of the rule",
+            "example": "1.1.0"
+          }
+        }
+      },
       "CreateAiModelDto": {
         "type": "object",
         "properties": {
@@ -8082,59 +8448,89 @@
           "modelId"
         ]
       },
-      "CreateRuleDto": {
+      "CreateAnalysisPlanDto": {
         "type": "object",
         "properties": {
-          "title": {
+          "name": {
             "type": "string",
-            "description": "The title of the rule",
-            "example": "Password Policy"
+            "description": "The name of the analysis plan",
+            "example": "Sentiment Analysis Plan"
           },
-          "content": {
+          "structuredDataPrompt": {
             "type": "string",
-            "description": "The content/description of the rule",
-            "example": "Passwords must be at least 8 characters long"
+            "description": "The prompt used for structured data extraction",
+            "example": "Analyze the sentiment of the following text and extract key entities..."
           },
-          "language": {
-            "type": "string",
-            "default": "en-US",
-            "description": "Language code for the rule (ISO 639-1)",
-            "example": "en-US"
-          },
-          "version": {
-            "type": "string",
-            "default": "1.0.0",
-            "description": "Version of the rule",
-            "example": "1.0.0"
+          "structuredDataSchema": {
+            "type": "object",
+            "description": "JSON schema defining the structure of the extracted data",
+            "example": {
+              "type": "object",
+              "properties": {
+                "sentiment": {
+                  "type": "string",
+                  "enum": [
+                    "positive",
+                    "neutral",
+                    "negative"
+                  ]
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "entities": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string"
+                      },
+                      "sentiment": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              "required": [
+                "sentiment",
+                "confidence"
+              ]
+            }
           }
         },
         "required": [
-          "title",
-          "content"
+          "name",
+          "structuredDataPrompt",
+          "structuredDataSchema"
         ]
       },
-      "UpdateRuleDto": {
+      "UpdateAnalysisPlanDto": {
         "type": "object",
         "properties": {
-          "title": {
+          "name": {
             "type": "string",
-            "description": "The title of the rule",
-            "example": "Updated Password Policy"
+            "description": "The name of the analysis plan",
+            "example": "Updated Sentiment Analysis Plan"
           },
-          "content": {
+          "structuredDataPrompt": {
             "type": "string",
-            "description": "The content/description of the rule",
-            "example": "Updated: Passwords must be at least 12 characters long"
+            "description": "The prompt used for structured data extraction",
+            "example": "Updated analysis prompt..."
           },
-          "language": {
-            "type": "string",
-            "description": "Language code for the rule (ISO 639-1)",
-            "example": "es-ES"
-          },
-          "version": {
-            "type": "string",
-            "description": "Version of the rule",
-            "example": "1.1.0"
+          "structuredDataSchema": {
+            "type": "object",
+            "description": "JSON schema defining the structure of the extracted data",
+            "example": {
+              "type": "object",
+              "properties": {}
+            }
           }
         }
       }

@@ -31,6 +31,7 @@ import { RawExecutionModule } from './raw-execution/raw-execution.module';
 import { TenantModule } from './tenant/tenant.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
 import { RuleModule } from './rule/rule.module';
+import { AnalysisPlanModule } from './analysis-plan/analysis-plan.module';
 import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 
@@ -108,6 +109,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     TenantModule,
     MarketplaceModule,
     RuleModule,
+    AnalysisPlanModule,
   ],
   controllers: [AppController],
   providers: [
