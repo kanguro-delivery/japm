@@ -1,74 +1,42 @@
-# ====================================
-# Multi-stage Dockerfile for JAPM API
-# ====================================
-
 # ---- Base Node ----
 FROM node:20-alpine AS base
-
 WORKDIR /usr/src/app
-
 RUN apk add --no-cache dumb-init openssl libc6-compat
-
-# IMPORTANT FIX for git Github workflows
 ENV OPENSSL_ENGINES=/usr/lib/ssl/engines
 ENV OPENSSL_CONF=/etc/ssl/openssl.cnf
 
 # ---- Dependencias ----
 FROM base AS dependencies
-
 WORKDIR /usr/src/app
 
-ENV PRISMA_CLIENT_ENGINE_TYPE=binary
-ENV PRISMA_CLI_QUERY_ENGINE_TYPE=binary
-ENV PRISMA_CLI_BINARY_TARGETS=linux-musl
-
-# Instala todas las dependencias (incluyendo devDependencies para la compilación y generación de Prisma)
 COPY package*.json ./
-
-RUN npm cache clean --force
-RUN npm install  --unsafe-perm
-
-# Genera el cliente de Prisma (necesario antes de la compilación si se importa desde @prisma/client)
 COPY prisma ./prisma/
-RUN npx prisma generate
+
+# Install dependencies and generate Prisma client in one step
+RUN npm install --unsafe-perm && \
+    npx prisma generate
 
 # ---- Builder ----
 FROM dependencies AS builder
-
 WORKDIR /usr/src/app
 
-# Copia el resto del código fuente
 COPY . .
-
-# Compila la aplicación
 RUN npm run build
 
 # ---- Release ----
 FROM base AS release
-
 WORKDIR /usr/src/app
 
-# Copy fully prepared node_modules (with Prisma client already generated)
+# Copy node_modules with generated Prisma client
 COPY --from=builder /usr/src/app/node_modules ./node_modules
-
-# Copy compiled app
 COPY --from=builder /usr/src/app/dist ./dist
-
-# Copy Prisma files (optional but recommended for migrations)
 COPY --from=builder /usr/src/app/prisma ./prisma
 
-# Remove devDependencies AFTER copying
+# Prune dev dependencies
 RUN npm prune --omit=dev
 
-# Expone el puerto de la aplicación (ajusta si es diferente)
 EXPOSE 3000
-
-# Variables de entorno por defecto (pueden ser sobreescritas)
 ENV NODE_ENV=production
-# ENV DATABASE_URL="tu_url_de_base_de_datos_de_produccion" # ¡Asegúrate de configurar esto!
 
-# Usuario no root para mayor seguridad
 USER node
-
-# Comando para ejecutar la aplicación
 CMD ["dumb-init", "node", "dist/src/main.js"]
