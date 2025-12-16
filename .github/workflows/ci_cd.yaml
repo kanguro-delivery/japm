@@ -1,0 +1,174 @@
+name: CI/CD
+on:
+  push:
+    branches:
+      - dev
+      - main
+jobs:
+  settings:
+    name: Determine settings
+    runs-on: ubuntu-latest
+    outputs:
+      env_name: ${{ steps.output.outputs.env_name }}
+      branch_name: ${{ steps.output.outputs.branch_name }}
+      oidc_role_name: ${{ steps.output.outputs.oidc_role_name }}
+    steps:
+      - name: Determine settings
+        id: output
+        run: |
+          if [ "$GITHUB_REF" == "refs/heads/main" ]; then
+            echo "branch_name=main" >> $GITHUB_OUTPUT
+            echo "env_name=prod" >> $GITHUB_OUTPUT
+            echo "oidc_role_name=prod-github-actions-oidc" >> $GITHUB_OUTPUT
+          else
+            echo "branch_name=dev" >> $GITHUB_OUTPUT
+            echo "env_name=test" >> $GITHUB_OUTPUT
+            echo "oidc_role_name=test-github-actions-oidc" >> $GITHUB_OUTPUT
+          fi
+
+  build-and-push:
+    permissions:
+      id-token: write # Required for OIDC!
+      contents: read
+    needs: [settings]
+    name: Build and push
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      ENVIRONMENT: ${{ needs.settings.outputs.env_name }}
+      ECR_REPOSITORY: ${{ needs.settings.outputs.env_name }}-japm_api
+
+    steps:
+      - name: Transform some env vars to uppercase
+        run: |
+          echo "ENVIRONMENT="${ENVIRONMENT^^} >> $GITHUB_ENV
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::909589680768:role/${{ needs.settings.outputs.oidc_role_name }}
+          aws-region: eu-west-1
+
+      - name: Login to AWS ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.8.0
+
+      - name: Create and use a new builder instance
+        run: |
+          docker buildx create --name kangurobuilder --use
+
+      - name: Build & push docker image with cache
+        id: build-test-cache
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker buildx build \
+            --builder kangurobuilder \
+            --cache-from=type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:cache \
+            --cache-to=mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:cache \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:${GITHUB_SHA::7} \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+            -f Dockerfile.production \
+            --push .
+
+      - name: Notify slack success
+        id: notify_success
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          channel-id: C05TWLH4E8K
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": ":large_green_circle: ${{ env.ENVIRONMENT }} - ${{ github.workflow }} - JAPM api builded successfully! :partying_face:"
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Author:* ${{ github.event.head_commit.author.name }} "
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": ${{ toJSON(format('{0} {1}', '*Message:*', github.event.head_commit.message)) }}
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:* ${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_DEPLOY_KEY }}
+
+      - name: Notify slack failure
+        id: notify_failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          channel-id: C05TWLH4E8K
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": ":red_circle: ${{ env.ENVIRONMENT }} - ${{ github.workflow }} - JAPM api build failed! :man-shrugging:"
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "<!channel>"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Author:* ${{ github.event.head_commit.author.name }} "
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": ${{ toJSON(format('{0} {1}', '*Message:*', github.event.head_commit.message)) }}
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:* ${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*More details:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_DEPLOY_KEY }}
