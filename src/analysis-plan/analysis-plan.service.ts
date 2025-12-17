@@ -36,22 +36,29 @@ export class AnalysisPlanService {
   }
 
   async update(id: string, updateAnalysisPlanDto: UpdateAnalysisPlanDto) {
-    await this.findOne(id); // Check if analysis plan exists
-
-    return this.prisma.analysisPlan.update({
-      where: { id },
-      data: {
-        ...updateAnalysisPlanDto,
-        updatedAt: new Date(),
-      },
-    });
+    try {
+      return await this.prisma.analysisPlan.update({
+        where: { id },
+        data: updateAnalysisPlanDto,
+      });
+    } catch (error) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`Analysis Plan with ID ${id} not found`);
+      }
+      throw error;
+    }
   }
 
   async remove(id: string) {
-    await this.findOne(id); // Check if analysis plan exists
-
-    return this.prisma.analysisPlan.delete({
-      where: { id },
-    });
+    try {
+      return await this.prisma.analysisPlan.delete({
+        where: { id },
+      });
+    } catch (error) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`Analysis Plan with ID ${id} not found`);
+      }
+      throw error;
+    }
   }
 }
