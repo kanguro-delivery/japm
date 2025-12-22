@@ -35,6 +35,18 @@ export class AnalysisPlanService {
     return analysisPlan;
   }
 
+  async findOneByName(name: string) {
+    const analysisPlan = await this.prisma.analysisPlan.findFirst({
+      where: { name },
+    });
+
+    if (!analysisPlan) {
+      throw new NotFoundException(`Analysis Plan with name ${name} not found`);
+    }
+
+    return analysisPlan;
+  }
+
   async update(id: string, updateAnalysisPlanDto: UpdateAnalysisPlanDto) {
     try {
       return await this.prisma.analysisPlan.update({

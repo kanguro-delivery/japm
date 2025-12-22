@@ -120,6 +120,44 @@ export class AnalysisPlanController {
     return this.analysisPlanService.findOne(id);
   }
 
+  @Get('by-name/:name')
+  @ApiOperation({ 
+    summary: 'Get an analysis plan by name',
+    description: 'Retrieves a single analysis plan by its name.'
+  })
+  @ApiParam({ 
+    name: 'name', 
+    description: 'Name of the analysis plan to retrieve',
+    example: 'Sentiment Analysis'
+  })
+  @ApiOkResponse({
+    description: 'The analysis plan was found and returned',
+    schema: {
+      example: {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        name: 'Sentiment Analysis',
+        structuredDataPrompt: 'Analyze the sentiment...',
+        structuredDataSchema: {},
+        createdAt: '2023-01-01T00:00:00.000Z',
+        updatedAt: '2023-01-01T00:00:00.000Z'
+      }
+    }
+  })
+  @ApiNotFoundResponse({ 
+    description: 'Analysis plan not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Analysis plan with name Sentiment Analysis not found',
+        error: 'Not Found'
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  findOneByName(@Param('name') name: string) {
+    return this.analysisPlanService.findOneByName(name);
+  }
+
   @Patch(':id')
   @ApiOperation({ 
     summary: 'Update an analysis plan',
