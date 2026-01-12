@@ -9,7 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ExecutePromptParamsDto } from './dto/execute-prompt-params.dto';
 import { ExecutePromptBodyDto } from './dto/execute-prompt-body.dto';
 import { ExecutePromptQueryDto } from './dto/execute-prompt-query.dto';
-import { PromptAsset, PromptAssetVersion } from '@prisma/client';
+import { PromptAsset, PromptAssetVersion, Rule } from '@prisma/client';
 import { RuleService } from '../rule/rule.service';
 
 
@@ -326,6 +326,7 @@ export class ServePromptService {
   ): Promise<{
     processedPrompt: string;
     metadata: PromptExecutionMetadata;
+    rules: Rule[];
     assets?: any[];
   }> {
     const { projectId, promptName, versionTag, languageCode } = params;
@@ -537,8 +538,8 @@ export class ServePromptService {
     return {
       processedPrompt: finalTextAfterRefResolution,
       metadata,
-      assets: formattedAssets,
-      rules: rules
+      rules: rules,
+      assets: formattedAssets
     };
   }
 }
