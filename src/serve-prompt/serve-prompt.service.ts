@@ -461,9 +461,12 @@ export class ServePromptService {
             })),
           }))
           : undefined;
+
+      const rules = await this.fetchRules();
       return {
         processedPrompt: promptText,
         metadata,
+        rules: [],
         assets: formattedAssets,
       };
     }
