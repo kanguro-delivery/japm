@@ -32,6 +32,8 @@ import { TenantModule } from './tenant/tenant.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DeploymentModule } from './deployment/deployment.module';
+import { RuleModule } from './rule/rule.module';
+import { AnalysisPlanModule } from './analysis-plan/analysis-plan.module';
 import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { ActivityLogModule } from './services/activity-log.module';
@@ -109,6 +111,8 @@ import { ApiKeyOrJwtGuard } from './auth/guards/api-key-or-jwt.guard';
     DeploymentModule,
     ActivityLogModule,
     ApiKeyModule,
+    RuleModule,
+    AnalysisPlanModule,
   ],
   controllers: [AppController],
   providers: [

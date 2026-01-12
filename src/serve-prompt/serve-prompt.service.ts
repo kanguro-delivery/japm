@@ -10,6 +10,8 @@ import { ExecutePromptParamsDto } from './dto/execute-prompt-params.dto';
 import { ExecutePromptBodyDto } from './dto/execute-prompt-body.dto';
 import { ExecutePromptQueryDto } from './dto/execute-prompt-query.dto';
 import { PromptAsset, PromptAssetVersion } from '@prisma/client';
+import { RuleService } from '../rule/rule.service';
+
 
 type PromptAssetWithVersions = PromptAsset & {
   versions: PromptAssetVersion[];
@@ -33,7 +35,18 @@ interface PromptExecutionMetadata {
 export class ServePromptService {
   private readonly logger = new Logger(ServePromptService.name);
 
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService, private ruleService: RuleService,) { }
+
+  async fetchRules(): Promise<Rule[]> {
+    try {
+      const rules = await this.ruleService.findAll({});
+      this.logger.log(`fetchRules:: ${JSON.stringify(rules)}`);
+      return rules;
+    } catch (error) {
+      this.logger.error('Failed to fetch rules', error.stack);
+      return [];
+    }
+  }
 
   async resolveAssets(
     text: string,
@@ -519,10 +532,13 @@ export class ServePromptService {
       );
     }
 
+    const rules = await this.fetchRules();
+
     return {
       processedPrompt: finalTextAfterRefResolution,
       metadata,
       assets: formattedAssets,
+      rules: rules
     };
   }
 }
