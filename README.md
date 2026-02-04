@@ -47,7 +47,7 @@ A robust, scalable, and secure prompt management system designed for multi-tenan
 
 3. **Set up environment variables:**
    ```bash
-   cp env.example .env
+   cp .env.test .env
    ```
    
    Edit `.env` and ensure these values are set:

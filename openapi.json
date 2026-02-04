@@ -3564,6 +3564,16 @@
             }
           },
           {
+            "name": "ruleTitle",
+            "required": false,
+            "in": "query",
+            "description": "Optional rule title to fetch a specific rule. If not provided, all rules are returned.",
+            "schema": {
+              "example": "Password Policy",
+              "type": "string"
+            }
+          },
+          {
             "name": "languageCode",
             "required": false,
             "in": "query",
@@ -3597,6 +3607,16 @@
             "schema": {
               "default": true,
               "type": "boolean"
+            }
+          },
+          {
+            "required": false,
+            "description": "Optional rule title to fetch a specific rule. If not provided, all rules are returned.",
+            "name": "ruleTitle",
+            "in": "query",
+            "schema": {
+              "example": "Password Policy",
+              "type": "string"
             }
           },
           {
@@ -3730,6 +3750,16 @@
             }
           },
           {
+            "name": "ruleTitle",
+            "required": false,
+            "in": "query",
+            "description": "Optional rule title to fetch a specific rule. If not provided, all rules are returned.",
+            "schema": {
+              "example": "Password Policy",
+              "type": "string"
+            }
+          },
+          {
             "name": "environmentName",
             "required": false,
             "in": "query",
@@ -3755,6 +3785,16 @@
             "schema": {
               "default": true,
               "type": "boolean"
+            }
+          },
+          {
+            "required": false,
+            "description": "Optional rule title to fetch a specific rule. If not provided, all rules are returned.",
+            "name": "ruleTitle",
+            "in": "query",
+            "schema": {
+              "example": "Password Policy",
+              "type": "string"
             }
           },
           {
