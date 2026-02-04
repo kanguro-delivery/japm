@@ -28,42 +28,113 @@ A robust, scalable, and secure prompt management system designed for multi-tenan
 
 ### Prerequisites
 
-- Node.js (v18 or higher)
-- Database system of choice (SQLite included by default)
+- Node.js (v18 or higher, v20+ recommended)
+- Docker & Docker Compose
 - npm, yarn, or pnpm
-- Docker (optional, for containerized deployment)
 
-### Quick Start (SQLite)
+### Quick Start (with Docker MySQL)
 
-1. Clone the repository:
+1. **Clone the repository:**
    ```bash
    git clone https://github.com/yourusername/japm.git
    cd japm
    ```
 
-2. Install dependencies:
+2. **Install dependencies:**
    ```bash
    npm install
-   # or
-   pnpm install
    ```
 
-3. Set up environment variables:
+3. **Set up environment variables:**
    ```bash
-   cp env.example .env
+   cp .env.test .env
    ```
-
-4. Initialize database:
+   
+   Edit `.env` and ensure these values are set:
    ```bash
-   ./init_db.sh
+   DATABASE_URL="mysql://root:root_password_very_secure_change_me@localhost:3306/japm"
+   JWT_SECRET=your_jwt_secret_here
+   JWT_EXPIRES_IN=24h
    ```
 
-5. Start the development server:
+4. **Start MySQL with Docker:**
+   ```bash
+   docker-compose up -d
+   ```
+   Wait for MySQL to be healthy (takes ~30 seconds).
+
+5. **Generate Prisma client and run migrations:**
+   ```bash
+   npx prisma generate
+   npx prisma migrate deploy
+   ```
+
+6. **Seed the database:**
+   ```bash
+   npm run seed:all
+   ```
+
+7. **Start the development server:**
    ```bash
    npm run start:dev
    ```
 
-The API will be available at `http://localhost:3001`.
+### Access the Application
+
+| Resource | URL |
+|----------|-----|
+| API | http://localhost:3000/api |
+| Swagger UI | http://localhost:3000/api/docs |
+| Health Check | http://localhost:3000/health |
+
+### Test Credentials
+
+| Field | Value |
+|-------|-------|
+| Email | `test@example.com` |
+| Password | `password123` |
+| Role | `admin` |
+
+**Login endpoint:** `POST http://localhost:3000/api/auth/login`
+
+```json
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+```
+
+The response will contain an `access_token` to use for authenticated requests.
+
+### Stopping Services
+
+```bash
+# Stop the development server
+Ctrl+C
+
+# Stop MySQL container
+docker-compose down
+
+# Stop and remove all data (fresh start)
+docker-compose down -v
+```
+
+### Troubleshooting
+
+**Migration errors with TEXT columns:**
+If you see errors about TEXT columns with default values, the migrations have already been fixed. Run:
+```bash
+npx prisma migrate reset --force
+```
+
+**Prisma client not found:**
+```bash
+npm install @prisma/client prisma
+npx prisma generate
+```
+
+**Port already in use:**
+Change the `PORT` in `.env` or stop the existing process.
 
 ## Project Structure
 

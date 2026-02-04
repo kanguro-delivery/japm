@@ -37,8 +37,13 @@ export class ServePromptService {
 
   constructor(private prisma: PrismaService, private ruleService: RuleService,) { }
 
-  async fetchRules(): Promise<Rule[]> {
+  async fetchRules(ruleTitle?: string): Promise<Rule[]> {
     try {
+      if (ruleTitle) {
+        const rule = await this.ruleService.findByTitle(ruleTitle);
+        this.logger.log(`fetchRules:: Found rule by title "${ruleTitle}": ${JSON.stringify(rule)}`);
+        return rule;
+      }
       const rules = await this.ruleService.findAll({});
       this.logger.log(`fetchRules:: ${JSON.stringify(rules)}`);
       return rules;
@@ -462,11 +467,11 @@ export class ServePromptService {
           }))
           : undefined;
 
-      const rules = await this.fetchRules();
+      const rules = await this.fetchRules(query.ruleTitle);
       return {
         processedPrompt: promptText,
         metadata,
-        rules: [],
+        rules: rules,
         assets: formattedAssets,
       };
     }
@@ -536,7 +541,7 @@ export class ServePromptService {
       );
     }
 
-    const rules = await this.fetchRules();
+    const rules = await this.fetchRules(query.ruleTitle);
 
     return {
       processedPrompt: finalTextAfterRefResolution,

@@ -98,6 +98,45 @@ export class RuleController {
     return this.ruleService.findAll({ language, version });
   }
 
+  @Get('by-title/:title')
+  @ApiOperation({ 
+    summary: 'Get a rule by title',
+    description: 'Retrieves a single rule by its title.'
+  })
+  @ApiParam({ 
+    name: 'title', 
+    description: 'Title of the rule to retrieve',
+    example: 'Password Policy'
+  })
+  @ApiOkResponse({
+    description: 'The rule was found and returned',
+    schema: {
+      example: {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        title: 'Password Policy',
+        content: 'Passwords must be at least 8 characters long',
+        language: 'en-US',
+        version: '1.0.0',
+        createdAt: '2023-01-01T00:00:00.000Z',
+        updatedAt: '2023-01-01T00:00:00.000Z'
+      }
+    }
+  })
+  @ApiNotFoundResponse({ 
+    description: 'Rule not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Rule with title "Password Policy" not found',
+        error: 'Not Found'
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  findByTitle(@Param('title') title: string) {
+    return this.ruleService.findByTitle(title);
+  }
+
   @Get(':id')
   @ApiOperation({ 
     summary: 'Get a rule by ID',
