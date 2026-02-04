@@ -40,18 +40,12 @@ export class RuleService {
   }
 
   async findByTitle(title: string) {
-    const rule = await this.prisma.rule.findFirst({
+    return this.prisma.rule.findMany({
       where: { title },
       orderBy: {
         createdAt: 'desc',
       },
     });
-
-    if (!rule) {
-      throw new NotFoundException(`Rule with title "${title}" not found`);
-    }
-
-    return rule;
   }
 
   async update(id: string, updateRuleDto: UpdateRuleDto) {

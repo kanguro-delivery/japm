@@ -42,7 +42,7 @@ export class ServePromptService {
       if (ruleTitle) {
         const rule = await this.ruleService.findByTitle(ruleTitle);
         this.logger.log(`fetchRules:: Found rule by title "${ruleTitle}": ${JSON.stringify(rule)}`);
-        return [rule];
+        return rule;
       }
       const rules = await this.ruleService.findAll({});
       this.logger.log(`fetchRules:: ${JSON.stringify(rules)}`);
