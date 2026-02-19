@@ -1,9 +1,9 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe } from '@nestjs/common';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiParam, 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
@@ -28,11 +28,11 @@ export class AnalysisPlanController {
   constructor(private readonly analysisPlanService: AnalysisPlanService) {}
 
   @Post()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Create a new analysis plan',
     description: 'Creates a new analysis plan with the provided details.'
   })
-  @ApiCreatedResponse({ 
+  @ApiCreatedResponse({
     description: 'The analysis plan has been successfully created.',
     schema: {
       example: {
@@ -45,7 +45,7 @@ export class AnalysisPlanController {
       }
     }
   })
-  @ApiBadRequestResponse({ 
+  @ApiBadRequestResponse({
     description: 'Invalid input data',
     schema: {
       example: {
@@ -60,7 +60,7 @@ export class AnalysisPlanController {
   }
 
   @Get()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get all analysis plans',
     description: 'Retrieves a list of all analysis plans.'
   })
@@ -83,12 +83,12 @@ export class AnalysisPlanController {
   }
 
   @Get(':id')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get an analysis plan by ID',
     description: 'Retrieves a single analysis plan by its unique identifier.'
   })
-  @ApiParam({ 
-    name: 'id', 
+  @ApiParam({
+    name: 'id',
     description: 'UUID of the analysis plan to retrieve',
     example: '550e8400-e29b-41d4-a716-446655440000'
   })
@@ -105,7 +105,7 @@ export class AnalysisPlanController {
       }
     }
   })
-  @ApiNotFoundResponse({ 
+  @ApiNotFoundResponse({
     description: 'Analysis plan not found',
     schema: {
       example: {
@@ -121,12 +121,12 @@ export class AnalysisPlanController {
   }
 
   @Get('by-name/:name')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get an analysis plan by name',
     description: 'Retrieves a single analysis plan by its name.'
   })
-  @ApiParam({ 
-    name: 'name', 
+  @ApiParam({
+    name: 'name',
     description: 'Name of the analysis plan to retrieve',
     example: 'Sentiment Analysis'
   })
@@ -134,16 +134,12 @@ export class AnalysisPlanController {
     description: 'The analysis plan was found and returned',
     schema: {
       example: {
-        id: '550e8400-e29b-41d4-a716-446655440000',
-        name: 'Sentiment Analysis',
         structuredDataPrompt: 'Analyze the sentiment...',
-        structuredDataSchema: {},
-        createdAt: '2023-01-01T00:00:00.000Z',
-        updatedAt: '2023-01-01T00:00:00.000Z'
+        structuredDataSchema: {}
       }
     }
   })
-  @ApiNotFoundResponse({ 
+  @ApiNotFoundResponse({
     description: 'Analysis plan not found',
     schema: {
       example: {
@@ -154,17 +150,19 @@ export class AnalysisPlanController {
     }
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  findOneByName(@Param('name') name: string) {
-    return this.analysisPlanService.findOneByName(name);
+  async findOneByName(@Param('name') name: string) {
+    const plan = await this.analysisPlanService.findOneByName(name);
+    const { id, name: _, createdAt, updatedAt, ...rest } = plan;
+    return rest;
   }
 
   @Patch(':id')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Update an analysis plan',
     description: 'Updates an existing analysis plan with the provided data.'
   })
-  @ApiParam({ 
-    name: 'id', 
+  @ApiParam({
+    name: 'id',
     description: 'UUID of the analysis plan to update',
     example: '550e8400-e29b-41d4-a716-446655440000'
   })
@@ -181,7 +179,7 @@ export class AnalysisPlanController {
       }
     }
   })
-  @ApiNotFoundResponse({ 
+  @ApiNotFoundResponse({
     description: 'Analysis plan not found',
     schema: {
       example: {
@@ -191,7 +189,7 @@ export class AnalysisPlanController {
       }
     }
   })
-  @ApiBadRequestResponse({ 
+  @ApiBadRequestResponse({
     description: 'Invalid input data',
     schema: {
       example: {
@@ -203,19 +201,19 @@ export class AnalysisPlanController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() updateAnalysisPlanDto: UpdateAnalysisPlanDto,
+      @Param('id', ParseUUIDPipe) id: string,
+      @Body() updateAnalysisPlanDto: UpdateAnalysisPlanDto,
   ) {
     return this.analysisPlanService.update(id, updateAnalysisPlanDto);
   }
 
   @Delete(':id')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Delete an analysis plan',
     description: 'Deletes an analysis plan by its unique identifier.'
   })
-  @ApiParam({ 
-    name: 'id', 
+  @ApiParam({
+    name: 'id',
     description: 'UUID of the analysis plan to delete',
     example: '550e8400-e29b-41d4-a716-446655440000'
   })
@@ -232,7 +230,7 @@ export class AnalysisPlanController {
       }
     }
   })
-  @ApiNotFoundResponse({ 
+  @ApiNotFoundResponse({
     description: 'Analysis plan not found',
     schema: {
       example: {
