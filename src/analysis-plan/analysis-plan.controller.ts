@@ -68,18 +68,16 @@ export class AnalysisPlanController {
     description: 'List of analysis plans returned successfully',
     schema: {
       example: [{
-        id: '550e8400-e29b-41d4-a716-446655440000',
         name: 'Sentiment Analysis',
         structuredDataPrompt: 'Analyze the sentiment...',
-        structuredDataSchema: {},
-        createdAt: '2023-01-01T00:00:00.000Z',
-        updatedAt: '2023-01-01T00:00:00.000Z'
+        structuredDataSchema: {}
       }]
     }
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  findAll() {
-    return this.analysisPlanService.findAll();
+  async findAll() {
+    const plans = await this.analysisPlanService.findAll();
+    return plans.map(({ id, createdAt, updatedAt, ...rest }) => rest);
   }
 
   @Get(':id')
@@ -96,12 +94,9 @@ export class AnalysisPlanController {
     description: 'The analysis plan was found and returned',
     schema: {
       example: {
-        id: '550e8400-e29b-41d4-a716-446655440000',
         name: 'Sentiment Analysis',
         structuredDataPrompt: 'Analyze the sentiment...',
-        structuredDataSchema: {},
-        createdAt: '2023-01-01T00:00:00.000Z',
-        updatedAt: '2023-01-01T00:00:00.000Z'
+        structuredDataSchema: {}
       }
     }
   })
@@ -116,8 +111,10 @@ export class AnalysisPlanController {
     }
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.analysisPlanService.findOne(id);
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    const plan = await this.analysisPlanService.findOne(id);
+    const { id: _, createdAt, updatedAt, ...rest } = plan;
+    return rest;
   }
 
   @Get('by-name/:name')
@@ -134,12 +131,9 @@ export class AnalysisPlanController {
     description: 'The analysis plan was found and returned',
     schema: {
       example: {
-        id: '550e8400-e29b-41d4-a716-446655440000',
         name: 'Sentiment Analysis',
         structuredDataPrompt: 'Analyze the sentiment...',
-        structuredDataSchema: {},
-        createdAt: '2023-01-01T00:00:00.000Z',
-        updatedAt: '2023-01-01T00:00:00.000Z'
+        structuredDataSchema: {}
       }
     }
   })
@@ -154,8 +148,10 @@ export class AnalysisPlanController {
     }
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  findOneByName(@Param('name') name: string) {
-    return this.analysisPlanService.findOneByName(name);
+  async findOneByName(@Param('name') name: string) {
+    const plan = await this.analysisPlanService.findOneByName(name);
+    const { id, createdAt, updatedAt, ...rest } = plan;
+    return rest;
   }
 
   @Patch(':id')

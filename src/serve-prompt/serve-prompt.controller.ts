@@ -69,6 +69,7 @@ export class ServePromptController {
       example: {
         processedPrompt: 'string',
         metadata: {},
+        rules: [{ content: 'Rule content here' }],
         assets: 'PromptAsset[]',
       },
     },
@@ -150,6 +151,7 @@ export class ServePromptController {
       example: {
         processedPrompt: 'string',
         metadata: {},
+        rules: [{ content: 'Rule content here' }],
         assets: 'PromptAsset[]',
       },
     },
