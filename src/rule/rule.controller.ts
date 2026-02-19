@@ -109,17 +109,11 @@ export class RuleController {
     example: 'Password Policy'
   })
   @ApiOkResponse({
-    description: 'The rule was found and returned',
+    description: 'The rule content was found and returned',
     schema: {
-      example: {
-        id: '550e8400-e29b-41d4-a716-446655440000',
-        title: 'Password Policy',
-        content: 'Passwords must be at least 8 characters long',
-        language: 'en-US',
-        version: '1.0.0',
-        createdAt: '2023-01-01T00:00:00.000Z',
-        updatedAt: '2023-01-01T00:00:00.000Z'
-      }
+      example: [{
+        content: 'Passwords must be at least 8 characters long'
+      }]
     }
   })
   @ApiNotFoundResponse({ 
@@ -133,8 +127,9 @@ export class RuleController {
     }
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  findByTitle(@Param('title') title: string) {
-    return this.ruleService.findByTitle(title);
+  async findByTitle(@Param('title') title: string) {
+    const rules = await this.ruleService.findByTitle(title);
+    return rules.map(rule => ({ content: rule.content }));
   }
 
   @Get(':id')
