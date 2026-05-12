@@ -63,7 +63,6 @@ export class ProjectController {
     description: 'Acceso denegado - Información de tenant no disponible',
   })
   findMine(@Request() req): Promise<Pick<Project, 'id' | 'name'>[]> {
-    const userId = req.user.userId;
     const tenantId = req.user.tenantId;
     if (!tenantId) {
       this.logger.error(
@@ -71,7 +70,7 @@ export class ProjectController {
       );
       throw new UnauthorizedException('User tenant information is missing');
     }
-    return this.projectService.findAllForUser(userId, tenantId);
+    return this.projectService.findAllForUser(tenantId);
   }
 
   @Post()

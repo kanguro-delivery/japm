@@ -104,15 +104,11 @@ export class ProjectService {
   }
 
   async findAllForUser(
-    userId: string,
     tenantId: string,
   ): Promise<Pick<Project, 'id' | 'name'>[]> {
-    this.logger.debug(
-      `[Service] Finding projects for user: ${userId} in tenant: ${tenantId}`,
-    );
+    this.logger.debug(`[Service] Finding projects for tenant: ${tenantId}`);
     return this.prisma.project.findMany({
       where: {
-        ownerUserId: userId,
         tenantId: tenantId,
       },
       select: { id: true, name: true },
