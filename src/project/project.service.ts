@@ -121,11 +121,10 @@ export class ProjectService {
     tenantId: string,
   ): Promise<Pick<Project, 'id' | 'name'>[]> {
     this.logger.debug(
-      `[Service] Finding projects for user: ${userId} in tenant: ${tenantId}`,
+      `[Service] Finding all projects in tenant: ${tenantId} (caller: ${userId})`,
     );
     return this.prisma.project.findMany({
       where: {
-        ownerUserId: userId,
         tenantId: tenantId,
       },
       select: { id: true, name: true },
