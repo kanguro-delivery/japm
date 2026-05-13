@@ -3,15 +3,16 @@ import { PromptService } from './prompt.service';
 import { CreatePromptDto } from './dto/create-prompt.dto';
 import { UpdatePromptDto } from './dto/update-prompt.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '../auth/guards/api-key-or-jwt.guard';
 import { ProjectGuard } from '../common/guards/project.guard';
+import { PromptConsumerGuard } from '../common/guards/prompt-consumer.guard';
 import { AuthenticatedRequest } from '../common/types/request.types';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiParam, ApiSecurity } from '@nestjs/swagger';
 import { GeneratePromptStructureDto } from './dto/generate-prompt-structure.dto';
 import { RegionService } from '../region/region.service';
 
 @ApiTags('Prompts')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, ProjectGuard)
 @Controller('projects/:projectId/prompts')
 export class PromptController {
   constructor(
@@ -20,6 +21,8 @@ export class PromptController {
   ) { }
 
   @Get()
+  @UseGuards(ApiKeyOrJwtGuard, ProjectGuard, PromptConsumerGuard)
+  @ApiSecurity('api-key')
   @ApiOperation({ summary: 'Get all prompts for a project' })
   @ApiParam({ name: 'projectId', description: 'Project ID' })
   @ApiResponse({ status: 200, description: 'List of prompts' })
@@ -31,6 +34,8 @@ export class PromptController {
   }
 
   @Get(':id')
+  @UseGuards(ApiKeyOrJwtGuard, ProjectGuard, PromptConsumerGuard)
+  @ApiSecurity('api-key')
   @ApiOperation({ summary: 'Get a specific prompt by ID' })
   @ApiParam({ name: 'projectId', description: 'Project ID' })
   @ApiParam({ name: 'id', description: 'Prompt ID' })
@@ -52,6 +57,7 @@ export class PromptController {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard, ProjectGuard)
   @ApiOperation({ summary: 'Create a new prompt' })
   @ApiParam({ name: 'projectId', description: 'Project ID' })
   @ApiResponse({ status: 201, description: 'Prompt created successfully' })
@@ -68,6 +74,7 @@ export class PromptController {
   }
 
   @Put(':id')
+  @UseGuards(JwtAuthGuard, ProjectGuard)
   @ApiOperation({ summary: 'Update a prompt (full update)' })
   @ApiParam({ name: 'projectId', description: 'Project ID' })
   @ApiParam({ name: 'id', description: 'Prompt ID' })
@@ -91,6 +98,7 @@ export class PromptController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, ProjectGuard)
   @ApiOperation({ summary: 'Update a prompt (partial update)' })
   @ApiParam({ name: 'projectId', description: 'Project ID' })
   @ApiParam({ name: 'id', description: 'Prompt ID' })
@@ -114,6 +122,7 @@ export class PromptController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, ProjectGuard)
   @ApiOperation({ summary: 'Delete a prompt' })
   @ApiParam({ name: 'projectId', description: 'Project ID' })
   @ApiParam({ name: 'id', description: 'Prompt ID' })
@@ -135,6 +144,7 @@ export class PromptController {
   }
 
   @Post('generate-structure')
+  @UseGuards(JwtAuthGuard, ProjectGuard)
   @ApiOperation({ summary: 'Generate a prompt structure from user input' })
   @ApiParam({ name: 'projectId', description: 'Project ID' })
   @ApiResponse({ status: 200, description: 'Prompt structure generated successfully' })

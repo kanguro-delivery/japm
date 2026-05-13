@@ -58,6 +58,15 @@ async function bootstrap() {
       },
       'bearer', // This name here is important! It needs to match the name in @ApiBearerAuth() decorators
     )
+    .addApiKey(
+      {
+        type: 'apiKey',
+        name: 'X-Api-Key',
+        in: 'header',
+        description: 'API key issued via POST /api-keys',
+      },
+      'api-key',
+    )
     .build();
   const document = SwaggerModule.createDocument(app, config);
 
