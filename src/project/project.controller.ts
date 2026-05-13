@@ -22,9 +22,12 @@ import {
   ApiResponse,
   ApiParam,
   ApiBearerAuth,
+  ApiSecurity,
 } from '@nestjs/swagger';
 import { Project, User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '../auth/guards/api-key-or-jwt.guard';
+import { PromptConsumerGuard } from '../common/guards/prompt-consumer.guard';
 import { Logger } from '@nestjs/common';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -47,7 +50,7 @@ export class ProjectController {
 
   constructor(private readonly projectService: ProjectService) { }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(ApiKeyOrJwtGuard, PromptConsumerGuard)
   @Get('mine')
   @ApiOperation({
     summary: 'Get current user projects',
@@ -55,6 +58,7 @@ export class ProjectController {
       'Returns all projects that the authenticated user has access to',
   })
   @ApiBearerAuth()
+  @ApiSecurity('api-key')
   @ApiResponse({
     status: 200,
     description: 'List of user projects',
@@ -129,13 +133,14 @@ export class ProjectController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(ApiKeyOrJwtGuard, PromptConsumerGuard)
   @ApiOperation({
     summary: 'Get all projects',
     description:
       'Retrieves a list of all projects for the current tenant. Results are cached for 1 hour.',
   })
   @ApiBearerAuth()
+  @ApiSecurity('api-key')
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'List of projects retrieved successfully',
@@ -165,7 +170,8 @@ export class ProjectController {
   }
 
   @Get(':projectSlug')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(ApiKeyOrJwtGuard, PromptConsumerGuard)
+  @ApiSecurity('api-key')
   @ApiOperation({
     summary: 'Get project by ID (slug)',
     description:
