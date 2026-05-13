@@ -22,12 +22,15 @@ import {
   ApiQuery,
   ApiBody,
   ApiBearerAuth,
+  ApiSecurity,
 } from '@nestjs/swagger';
 import { PromptVersionService } from './prompt-version.service';
 import { UpdatePromptVersionDto } from './dto/update-prompt-version.dto';
 import { PromptVersion } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '../auth/guards/api-key-or-jwt.guard';
 import { ProjectGuard } from '../common/guards/project.guard';
+import { PromptConsumerGuard } from '../common/guards/prompt-consumer.guard';
 import { CreatePromptVersionDto } from 'src/prompt/dto/create-prompt-version.dto';
 import { ResolveAssetsQueryDto } from '../serve-prompt/dto/resolve-assets-query.dto';
 import {
@@ -37,12 +40,12 @@ import {
 
 @ApiTags('Prompt Versions (within Project/Prompt)')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, ProjectGuard)
 @Controller('projects/:projectId/prompts/:promptId/versions')
 export class PromptVersionController {
   constructor(private readonly service: PromptVersionService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, ProjectGuard)
   @ThrottleCreation()
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
   @ApiOperation({
@@ -72,6 +75,8 @@ export class PromptVersionController {
   }
 
   @Get()
+  @UseGuards(ApiKeyOrJwtGuard, ProjectGuard, PromptConsumerGuard)
+  @ApiSecurity('api-key')
   @ThrottleRead()
   @ApiOperation({
     summary: 'Get all versions for a specific prompt within a project',
@@ -94,6 +99,8 @@ export class PromptVersionController {
   }
 
   @Get(':versionTag')
+  @UseGuards(ApiKeyOrJwtGuard, ProjectGuard, PromptConsumerGuard)
+  @ApiSecurity('api-key')
   @ThrottleRead()
   @ApiOperation({
     summary:
@@ -164,6 +171,7 @@ export class PromptVersionController {
   }
 
   @Patch(':versionTag')
+  @UseGuards(JwtAuthGuard, ProjectGuard)
   @ThrottleCreation()
   @UsePipes(
     new ValidationPipe({
@@ -202,6 +210,7 @@ export class PromptVersionController {
   }
 
   @Delete(':versionTag')
+  @UseGuards(JwtAuthGuard, ProjectGuard)
   @ThrottleCreation()
   @ApiOperation({
     summary:
@@ -229,6 +238,7 @@ export class PromptVersionController {
   // --- Marketplace Endpoints ---
 
   @Post(':versionTag/request-publish')
+  @UseGuards(JwtAuthGuard, ProjectGuard)
   @ThrottleCreation()
   @ApiOperation({
     summary: 'Request to publish a prompt version to the marketplace',
@@ -261,6 +271,7 @@ export class PromptVersionController {
   }
 
   @Post(':versionTag/unpublish')
+  @UseGuards(JwtAuthGuard, ProjectGuard)
   @ThrottleCreation()
   @ApiOperation({ summary: 'Unpublish a prompt version from the marketplace' })
   @ApiParam({ name: 'projectId', description: 'Project ID' })
