@@ -42,4 +42,14 @@ export class ExecutePromptQueryDto {
     return value as boolean;
   })
   processed?: boolean = true;
+
+  @ApiProperty({
+    required: false,
+    description:
+      'Optional rule title to fetch a specific rule. If not provided, all rules are returned.',
+    example: 'Password Policy',
+  })
+  @IsString()
+  @IsOptional()
+  ruleTitle?: string;
 }

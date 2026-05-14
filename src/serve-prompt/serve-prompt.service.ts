@@ -37,11 +37,16 @@ export class ServePromptService {
 
   constructor(private prisma: PrismaService, private ruleService: RuleService,) { }
 
-  async fetchRules(): Promise<Rule[]> {
+  async fetchRules(ruleTitle?: string): Promise<{content: string}[]> {
     try {
+      if (ruleTitle) {
+        const rule = await this.ruleService.findByTitle(ruleTitle);
+        this.logger.log(`fetchRules:: Found rule by title "${ruleTitle}": ${JSON.stringify(rule)}`);
+        return rule.map(r => ({ content: r.content }));
+      }
       const rules = await this.ruleService.findAll({});
       this.logger.log(`fetchRules:: ${JSON.stringify(rules)}`);
-      return rules;
+      return rules.map(r => ({ content: r.content }));
     } catch (error) {
       this.logger.error('Failed to fetch rules', error.stack);
       return [];
@@ -326,7 +331,7 @@ export class ServePromptService {
   ): Promise<{
     processedPrompt: string;
     metadata: PromptExecutionMetadata;
-    rules: Rule[];
+    rules: {content: string}[];
     assets?: any[];
   }> {
     const { projectId, promptName, versionTag, languageCode } = params;
@@ -462,11 +467,11 @@ export class ServePromptService {
           }))
           : undefined;
 
-      const rules = await this.fetchRules();
+      const rules = await this.fetchRules(query.ruleTitle);
       return {
         processedPrompt: promptText,
         metadata,
-        rules: [],
+        rules: rules,
         assets: formattedAssets,
       };
     }
@@ -536,7 +541,7 @@ export class ServePromptService {
       );
     }
 
-    const rules = await this.fetchRules();
+    const rules = await this.fetchRules(query.ruleTitle);
 
     return {
       processedPrompt: finalTextAfterRefResolution,

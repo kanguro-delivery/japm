@@ -98,6 +98,40 @@ export class RuleController {
     return this.ruleService.findAll({ language, version });
   }
 
+  @Get('by-title/:title')
+  @ApiOperation({ 
+    summary: 'Get a rule by title',
+    description: 'Retrieves a single rule by its title.'
+  })
+  @ApiParam({ 
+    name: 'title', 
+    description: 'Title of the rule to retrieve',
+    example: 'Password Policy'
+  })
+  @ApiOkResponse({
+    description: 'The rule content was found and returned',
+    schema: {
+      example: [{
+        content: 'Passwords must be at least 8 characters long'
+      }]
+    }
+  })
+  @ApiNotFoundResponse({ 
+    description: 'Rule not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Rule with title "Password Policy" not found',
+        error: 'Not Found'
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async findByTitle(@Param('title') title: string) {
+    const rules = await this.ruleService.findByTitle(title);
+    return rules.map(rule => ({ content: rule.content }));
+  }
+
   @Get(':id')
   @ApiOperation({ 
     summary: 'Get a rule by ID',
