@@ -13,7 +13,7 @@ import {
 import { AnalysisPlanService } from './analysis-plan.service';
 import { CreateAnalysisPlanDto } from './dto/create-analysis-plan.dto';
 import { UpdateAnalysisPlanDto } from './dto/update-analysis-plan.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '../auth/guards/api-key-or-jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Role } from '../auth/enums/role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -21,7 +21,7 @@ import { UseGuards } from '@nestjs/common/decorators';
 
 @ApiTags('Analysis Plans')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(ApiKeyOrJwtGuard, RolesGuard)
 @Roles(Role.ADMIN, Role.TENANT_ADMIN)
 @Controller('analysis-plans')
 export class AnalysisPlanController {
