@@ -14,21 +14,21 @@ import {
 import { RuleService } from './rule.service';
 import { CreateRuleDto } from './dto/create-rule.dto';
 import { UpdateRuleDto } from './dto/update-rule.dto';
-import {JwtAuthGuard} from "../auth/guards/jwt-auth.guard";
+import { ApiKeyOrJwtGuard } from '../auth/guards/api-key-or-jwt.guard';
 import {RolesGuard} from "../auth/guards/roles.guard";
 import { Role } from '../auth/enums/role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
 
 @ApiTags('Rules')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.TENANT_ADMIN)
+@UseGuards(ApiKeyOrJwtGuard, RolesGuard)
 @Controller('rules')
 export class RuleController {
   constructor(private readonly ruleService: RuleService) {}
 
   @Post()
-  @ApiOperation({ 
+  @Roles(Role.ADMIN, Role.TENANT_ADMIN)
+  @ApiOperation({
     summary: 'Create a new rule',
     description: 'Creates a new rule with the provided details.'
   })
@@ -62,7 +62,8 @@ export class RuleController {
   }
 
   @Get()
-  @ApiOperation({ 
+  @Roles(Role.ADMIN, Role.TENANT_ADMIN, Role.PROMPT_CONSUMER)
+  @ApiOperation({
     summary: 'Get all rules',
     description: 'Retrieves a list of all rules with optional filtering.'
   })
@@ -99,7 +100,8 @@ export class RuleController {
   }
 
   @Get('by-title/:title')
-  @ApiOperation({ 
+  @Roles(Role.ADMIN, Role.TENANT_ADMIN, Role.PROMPT_CONSUMER)
+  @ApiOperation({
     summary: 'Get a rule by title',
     description: 'Retrieves a single rule by its title.'
   })
@@ -133,7 +135,8 @@ export class RuleController {
   }
 
   @Get(':id')
-  @ApiOperation({ 
+  @Roles(Role.ADMIN, Role.TENANT_ADMIN, Role.PROMPT_CONSUMER)
+  @ApiOperation({
     summary: 'Get a rule by ID',
     description: 'Retrieves a single rule by its unique identifier.'
   })
@@ -172,7 +175,8 @@ export class RuleController {
   }
 
   @Patch(':id')
-  @ApiOperation({ 
+  @Roles(Role.ADMIN, Role.TENANT_ADMIN)
+  @ApiOperation({
     summary: 'Update a rule',
     description: 'Updates an existing rule with the provided data.'
   })
@@ -224,7 +228,8 @@ export class RuleController {
   }
 
   @Delete(':id')
-  @ApiOperation({ 
+  @Roles(Role.ADMIN, Role.TENANT_ADMIN)
+  @ApiOperation({
     summary: 'Delete a rule',
     description: 'Deletes a rule by its unique identifier.'
   })
