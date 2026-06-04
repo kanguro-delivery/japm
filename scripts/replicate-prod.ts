@@ -239,10 +239,9 @@ async function importProject(c: AxiosInstance, pe: ProjectExport, localTenantId:
     }
     const tid = target.id;
 
-    // 2. Regions (record old→new mapping; CulturalData refers by region id)
-    const regionIdMap = new Map<string, string>(); // sourceRegionId → targetRegionId
+    // 2. Regions (CulturalData refers by languageCode, not cuid)
+    const targetRegions = await get<Region[]>(c, `/projects/${tid}/regions`);
     for (const r of pe.regions) {
-        const targetRegions = await get<Region[]>(c, `/projects/${tid}/regions`);
         let tr = targetRegions.find(x => x.languageCode === r.languageCode);
         if (!tr) {
             tr = await post<Region>(c, `/projects/${tid}/regions`, {
@@ -253,8 +252,8 @@ async function importProject(c: AxiosInstance, pe: ProjectExport, localTenantId:
                 // parentRegionId is referenced by languageCode in the API
                 parentRegionId: r.parentRegionId ? pe.regions.find(x => x.id === r.parentRegionId)?.languageCode : undefined,
             }, { ignoreConflict: true }) as Region;
+            if (tr) targetRegions.push(tr);
         }
-        if (tr) regionIdMap.set(r.id, tr.id);
         console.log(`  · region ${r.languageCode}`);
     }
 
@@ -302,12 +301,13 @@ async function importProject(c: AxiosInstance, pe: ProjectExport, localTenantId:
     }
 
     // 7. Prompts (each creates a 1.0.0 version)
+    const targetPrompts = await get<Prompt[]>(c, `/projects/${tid}/prompts`);
     for (const pp of pe.prompts) {
-        await importPrompt(c, tid, pp, localTenantId);
+        await importPrompt(c, tid, pp, localTenantId, targetPrompts);
     }
 }
 
-async function importPrompt(c: AxiosInstance, tid: string, pp: ProjectExport['prompts'][number], localTenantId: string) {
+async function importPrompt(c: AxiosInstance, tid: string, pp: ProjectExport['prompts'][number], localTenantId: string, targetPrompts: Prompt[]) {
     const src = pp.prompt;
     console.log(`  📝 Prompt: ${src.name} (src id=${src.id})`);
 
@@ -322,8 +322,8 @@ async function importPrompt(c: AxiosInstance, tid: string, pp: ProjectExport['pr
     const tags = src.tags?.map(t => typeof t === 'string' ? t : t.name) ?? [];
 
     // Create prompt with first version
-    const targetPrompts = await get<Prompt[]>(c, `/projects/${tid}/prompts`);
     let target = targetPrompts.find(p => p.name === src.name || p.id === src.id);
+    const existed = !!target;
     if (!target) {
         target = await post<Prompt>(c, `/projects/${tid}/prompts`, {
             name: src.name,
@@ -336,22 +336,26 @@ async function importPrompt(c: AxiosInstance, tid: string, pp: ProjectExport['pr
                 languageCode: t.languageCode, promptText: t.promptText,
             })),
         }) as Prompt;
+        if (target) targetPrompts.push(target);
         console.log(`    ✓ created prompt + v${first.version.versionTag} (target id=${target.id})`);
     } else {
-        console.log(`    ↪ prompt already exists (target id=${target.id}); will only add missing versions`);
+        console.log(`    ↪ prompt already exists (target id=${target.id}); will re-attempt all versions/translations`);
     }
     const pid = target.id;
 
     // The first version was created with versionTag derived from prompt POST (defaults to 1.0.0).
     // If the actual first.version.versionTag is not 1.0.0, we have a mismatch.
-    if (first.version.versionTag !== '1.0.0') {
+    if (!existed && first.version.versionTag !== '1.0.0') {
         console.warn(`    ⚠ source first version is '${first.version.versionTag}' but prompt create makes a '1.0.0'. Skipping that source version; you may want to delete the '1.0.0' afterwards.`);
     }
 
-    // Create remaining versions (skip the first one we used at creation).
+    // If prompt newly created: skip first version (already created via prompt POST).
+    // If prompt already existed: import from index 0 so missing versions + translations get added.
+    // ignoreConflict makes existing-version POSTs safe.
     // NOTE: dev's PromptVersionService.create() passes the DTO directly to Prisma, so `initialTranslations`
     // would trigger a PrismaClientValidationError ("Unknown argument"). Post translations separately.
-    for (let i = 1; i < sorted.length; i++) {
+    const startIndex = existed ? 0 : 1;
+    for (let i = startIndex; i < sorted.length; i++) {
         const v = sorted[i];
         await post(c, `/projects/${tid}/prompts/${pid}/versions`, {
             promptText: v.version.promptText,
