@@ -1231,6 +1231,9 @@
         "security": [
           {
             "bearer": []
+          },
+          {
+            "api-key": []
           }
         ],
         "summary": "Get all prompts for a project",
@@ -1311,6 +1314,9 @@
         "security": [
           {
             "bearer": []
+          },
+          {
+            "api-key": []
           }
         ],
         "summary": "Get a specific prompt by ID",
@@ -1531,6 +1537,9 @@
             "bearer": []
           },
           {
+            "api-key": []
+          },
+          {
             "bearer": []
           }
         ],
@@ -1616,6 +1625,9 @@
             "bearer": []
           },
           {
+            "api-key": []
+          },
+          {
             "bearer": []
           }
         ],
@@ -1661,6 +1673,9 @@
         "security": [
           {
             "bearer": []
+          },
+          {
+            "api-key": []
           }
         ],
         "summary": "Get project by ID (slug)",
@@ -3656,6 +3671,11 @@
                   "example": {
                     "processedPrompt": "string",
                     "metadata": {},
+                    "rules": [
+                      {
+                        "content": "Rule content here"
+                      }
+                    ],
                     "assets": "PromptAsset[]"
                   }
                 }
@@ -3834,6 +3854,11 @@
                   "example": {
                     "processedPrompt": "string",
                     "metadata": {},
+                    "rules": [
+                      {
+                        "content": "Rule content here"
+                      }
+                    ],
                     "assets": "PromptAsset[]"
                   }
                 }
@@ -4008,19 +4033,15 @@
         ],
         "responses": {
           "200": {
-            "description": "The rule was found and returned",
+            "description": "The rule content was found and returned",
             "content": {
               "application/json": {
                 "schema": {
-                  "example": {
-                    "id": "550e8400-e29b-41d4-a716-446655440000",
-                    "title": "Password Policy",
-                    "content": "Passwords must be at least 8 characters long",
-                    "language": "en-US",
-                    "version": "1.0.0",
-                    "createdAt": "2023-01-01T00:00:00.000Z",
-                    "updatedAt": "2023-01-01T00:00:00.000Z"
-                  }
+                  "example": [
+                    {
+                      "content": "Passwords must be at least 8 characters long"
+                    }
+                  ]
                 }
               }
             }
@@ -4672,6 +4693,9 @@
         "security": [
           {
             "bearer": []
+          },
+          {
+            "api-key": []
           }
         ],
         "summary": "Get all versions for a specific prompt within a project",
@@ -4786,6 +4810,9 @@
         "security": [
           {
             "bearer": []
+          },
+          {
+            "api-key": []
           }
         ],
         "summary": "Get a specific prompt version by its tag within a project/prompt. Allows resolving assets.",
@@ -7590,12 +7617,8 @@
               "application/json": {
                 "schema": {
                   "example": {
-                    "id": "550e8400-e29b-41d4-a716-446655440000",
-                    "name": "Sentiment Analysis",
                     "structuredDataPrompt": "Analyze the sentiment...",
-                    "structuredDataSchema": {},
-                    "createdAt": "2023-01-01T00:00:00.000Z",
-                    "updatedAt": "2023-01-01T00:00:00.000Z"
+                    "structuredDataSchema": {}
                   }
                 }
               }
@@ -7648,6 +7671,12 @@
         "name": "JWT",
         "description": "Enter JWT token",
         "in": "header"
+      },
+      "api-key": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Api-Key",
+        "description": "API key issued via POST /api-keys"
       }
     },
     "schemas": {
