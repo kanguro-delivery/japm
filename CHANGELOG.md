@@ -7,20 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- **Enforce DB SSL (phase 1)**: Added an opt-in `DB_SSL` env var. When set to `"true"`, `PrismaService` appends `sslaccept=accept_invalid_certs` to `DATABASE_URL`, enabling TLS without certificate validation (Prisma's equivalent of `rejectUnauthorized: false`). Default is off so local SQLite/docker-compose MySQL keep working unchanged. `env.example` documents the variable.
+### Changed
+- **DB SSL: moved to secret-side**: Reverted the in-app `DB_SSL` env-flag plumbing introduced in the previous two changes. TLS is now enabled by appending the Prisma+MySQL SSL params (`sslidentity=&sslpassword=&sslcert=&sslaccept=accept_invalid_certs`) directly to the `database_url` value in AWS Secrets Manager (both runtime and migrations secrets). `PrismaService` is back to plain `process.env.DATABASE_URL`. `env.example` documents the URL form instead of a flag.
 
-  **Why**: AWS RDS for the test environment is being switched to enforce `require_secure_transport=ON` (plus transparent encryption-at-rest via KMS). Without a client-side TLS opt-in the service would fail to connect to RDS with `Connections using insecure transport are prohibited`.
+  **Why**: `prisma migrate deploy` reads `DATABASE_URL` directly and bypasses `PrismaService`, so the in-app rewrite never applied to migration Jobs — they kept connecting plaintext and crashing against RDS `require_secure_transport=ON`. Putting the params in the secret means every consumer (runtime, migration Job, ad-hoc CLI, future tools) shares a single source of truth without env-flag plumbing in both helm and app code.
 
-  **Impact**: No runtime impact for local development (SSL remains off by default). Deployed environments (test first, then staging/prod) need `DB_SSL=true` set in their env-var source **before** RDS starts enforcing SSL.
-
-  **Breaking**: NO for local dev or any environment that does not have `DB_SSL=true` set. The change is purely additive and gated.
-
-  **Key decisions**:
-  - Phase 1 ships **without certificate validation**. The DB lives in an internal AWS subnet, so MITM is treated as out-of-scope. Proper CA validation is **deferred to phase 2**.
-  - Truthy check is strict `=== 'true'`, matching the convention used in baseapp-api (PR #695), orchestration-system, and incidents-api.
-  - Implemented at the URL layer because Prisma's `PrismaClient` constructor exposes the URL but not driver-level SSL options; appending the query param is the supported Prisma mechanism.
-  - SQLite ignores the param, so the same flag is safe across all three providers configured in `schema.prisma`.
+  **Phase 1 caveat (unchanged)**: TLS is on, certificate validation is off. CA validation is deferred to phase 2.
 
 ## [1.0.0] - 2025-05-25
 
