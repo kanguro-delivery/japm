@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Enforce DB SSL (phase 1)**: Added an opt-in `DB_SSL` env var. When set to `"true"`, `PrismaService` appends `sslaccept=accept_invalid_certs` to `DATABASE_URL`, enabling TLS without certificate validation (Prisma's equivalent of `rejectUnauthorized: false`). Default is off so local SQLite/docker-compose MySQL keep working unchanged. `env.example` documents the variable.
+
+  **Why**: AWS RDS for the test environment is being switched to enforce `require_secure_transport=ON` (plus transparent encryption-at-rest via KMS). Without a client-side TLS opt-in the service would fail to connect to RDS with `Connections using insecure transport are prohibited`.
+
+  **Impact**: No runtime impact for local development (SSL remains off by default). Deployed environments (test first, then staging/prod) need `DB_SSL=true` set in their env-var source **before** RDS starts enforcing SSL.
+
+  **Breaking**: NO for local dev or any environment that does not have `DB_SSL=true` set. The change is purely additive and gated.
+
+  **Key decisions**:
+  - Phase 1 ships **without certificate validation**. The DB lives in an internal AWS subnet, so MITM is treated as out-of-scope. Proper CA validation is **deferred to phase 2**.
+  - Truthy check is strict `=== 'true'`, matching the convention used in baseapp-api (PR #695), orchestration-system, and incidents-api.
+  - Implemented at the URL layer because Prisma's `PrismaClient` constructor exposes the URL but not driver-level SSL options; appending the query param is the supported Prisma mechanism.
+  - SQLite ignores the param, so the same flag is safe across all three providers configured in `schema.prisma`.
+
 ## [1.0.0] - 2025-05-25
 
 ### Added
