@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - dev
+      - staging
       - main
 jobs:
   settings:
@@ -20,6 +21,10 @@ jobs:
             echo "branch_name=main" >> $GITHUB_OUTPUT
             echo "env_name=prod" >> $GITHUB_OUTPUT
             echo "oidc_role_name=prod-github-actions-oidc" >> $GITHUB_OUTPUT
+          elif [ "$GITHUB_REF" == "refs/heads/staging" ]; then
+            echo "branch_name=staging" >> $GITHUB_OUTPUT
+            echo "env_name=sbox" >> $GITHUB_OUTPUT
+            echo "oidc_role_name=sbox-github-actions-oidc" >> $GITHUB_OUTPUT
           else
             echo "branch_name=dev" >> $GITHUB_OUTPUT
             echo "env_name=test" >> $GITHUB_OUTPUT

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **DB SSL: moved to secret-side**: Reverted the in-app `DB_SSL` env-flag plumbing introduced in the previous two changes. TLS is now enabled by appending the Prisma+MySQL SSL params (`sslidentity=&sslpassword=&sslcert=&sslaccept=accept_invalid_certs`) directly to the `database_url` value in AWS Secrets Manager (both runtime and migrations secrets). `PrismaService` is back to plain `process.env.DATABASE_URL`. `env.example` documents the URL form instead of a flag.
+
+  **Why**: `prisma migrate deploy` reads `DATABASE_URL` directly and bypasses `PrismaService`, so the in-app rewrite never applied to migration Jobs — they kept connecting plaintext and crashing against RDS `require_secure_transport=ON`. Putting the params in the secret means every consumer (runtime, migration Job, ad-hoc CLI, future tools) shares a single source of truth without env-flag plumbing in both helm and app code.
+
+  **Phase 1 caveat (unchanged)**: TLS is on, certificate validation is off. CA validation is deferred to phase 2.
+
 ## [1.0.0] - 2025-05-25
 
 ### Added
